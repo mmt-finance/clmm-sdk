@@ -1,0 +1,20 @@
+name: Unit-test
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  unit-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: yarn
+
+      - name: Test
+        run: yarn test
