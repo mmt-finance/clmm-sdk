@@ -44,5 +44,27 @@
     "extends": [
       "@commitlint/config-conventional"
     ]
+  },
+  "jest": {
+    "preset": "ts-jest",
+    "testEnvironment": "node"
+  },
+  "husky": {
+    "hooks": {
+      "commit-msg": "npx --no-install commitlint --edit $1",
+      "pre-commit": "npx prettier --write '**/*.{js,ts,json}'",
+      "pre-push": "npx branch-name-lint"
+    }
+  },
+  "branchNameLinter": {
+    "prefixes": [
+      "feature",
+      "hotfix",
+      "release",
+      "feat",
+      "fix",
+      "refactor",
+      "doc"
+    ]
   }
 }
