@@ -1,7 +1,9 @@
 # MMT Finance CLMM SDK
 
-MMT Finance CLMM SDK is the official Typescript SDK for CLMM at dev integration
-with MMT Finance CLMM.
+`@mmt-finance/clmm-sdk` is the official TypeScript SDK for integrating with
+MMT Finance CLMM for developers. Please visit 
+[MMT Developer Docs](https://developers.mmt.finance/clmm-sdk/integrations)
+for detailed guideline.
 
 ## Getting Started
 
@@ -29,4 +31,13 @@ Now, you can start using MMT SDK.
 
 ### Supported Features
 
-For a full detailed technical integration doc, please visit [MMT Developer Docs]().
+* [Retrieve pool data](https://developers.mmt.finance/features/read-pool-data)
+* [Retrieve user data](https://developers.mmt.finance/features/read-user-data)
+* [Swap](https://developers.mmt.finance/features/swap)
+* [Open and Add Liquidity](https://developers.mmt.finance/features/open-and-add-liquidity)
+* [Position Management](https://developers.mmt.finance/features/position-management)
+* [Claim Fees and Rewards](https://developers.mmt.finance/features/claim-fees-and-rewards)
+* [Close Position](https://developers.mmt.finance/features/close-position)
+
+For a full detailed technical integration doc, please visit 
+[MMT Developer Docs](https://developers.mmt.finance/clmm-sdk/integrations).
