@@ -1,1 +1,1 @@
-npx prettier --write '**/*.{js,ts,json}'
+yarn prettier:fix
