@@ -63,7 +63,7 @@ export async function main() {
   const resp = await executeTxExample({
     tx,
     sdk,
-    execution: { dryrun: true, address: senderAddress },
+    execution: { dryRun: true, address: senderAddress },
   });
   console.log(resp);
 }

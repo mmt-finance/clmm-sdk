@@ -16,7 +16,8 @@ export async function main() {
 
   const tx = new Transaction(); // Create a new transaction instance
   const senderAddress = '0xae55cde531ea8d707e69011301e78b2f21e6a0e1094e60033ab93a8e894e6871';
-  const poolId = '0xf0d3fa213889a7c2bc79505c030b6a105d549e6608aeab201811af333f9b18a4'; // Define the liquidity pool ID (used for adding liquidity)
+  // Define the liquidity pool ID (used for adding liquidity)
+  const poolId = '0xf0d3fa213889a7c2bc79505c030b6a105d549e6608aeab201811af333f9b18a4';
   const pool = await sdk.Pool.getPool(poolId); // Fetch pool details using the SDK
   if (!pool) {
     throw new Error('Pool not found');
@@ -121,7 +122,7 @@ export async function main() {
   const resp = await executeTxExample({
     tx,
     sdk,
-    execution: { dryrun: true, address: senderAddress },
+    execution: { dryRun: true, address: senderAddress },
   });
   console.log(resp);
 }

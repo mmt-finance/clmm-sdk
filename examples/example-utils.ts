@@ -12,9 +12,9 @@ export async function executeTxExample({
 }: {
   tx: Transaction;
   sdk: MmtSDK;
-  execution: { dryrun: false; signer: Signer } | { dryrun: true; address: string };
+  execution: { dryRun: false; signer: Signer } | { dryRun: true; address: string };
 }) {
-  if ('address' in execution) {
+  if (execution.dryRun === true) {
     tx.setSender(execution.address);
     const txBytes = await tx.build({ client: sdk.rpcClient });
     return await sdk.rpcClient.dryRunTransactionBlock({
@@ -91,7 +91,7 @@ export async function getPoolAndLiquidity(poolId: string, sdk: MmtSDK, senderAdd
   }
   const position = userPositions.find((pos) => pos.poolId === poolId);
   if (!position) {
-    throw new Error('No matching position found for this poolId');
+    throw new Error('No matching position found');
   }
 
   return { pool, position, positionId: position.objectId };

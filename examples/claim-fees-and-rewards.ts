@@ -11,13 +11,14 @@ export async function main() {
 
   const pools = await sdk.Pool.getAllPools(); // Get AllPools detail using sdk
 
-  const tx = await sdk.Pool.collectAllPoolsRewards(senderAddress, pools); // Init collectAllPoolsRewards tx
+  // Init collectAllPoolsRewards tx
+  const tx = await sdk.Pool.collectAllPoolsRewards(senderAddress, pools);
 
   // Execute transaction
   const resp = await executeTxExample({
     tx,
     sdk,
-    execution: { dryrun: true, address: senderAddress },
+    execution: { dryRun: true, address: senderAddress },
   });
   console.log(resp);
 }
