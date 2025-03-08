@@ -6,10 +6,10 @@ export async function main() {
   // Initialize SDK & senderAddress
   const sdk = MmtSDK.NEW({
     network: 'testnet',
-  })
+  });
   const senderAddress = '0xae55cde531ea8d707e69011301e78b2f21e6a0e1094e60033ab93a8e894e6871';
   const poolId = '0x53ceda0bbe1bdb3c1c0b1c53ecb49856f135a9fffc91e5a50aa4045a3f8240f7';
-  const {pool, position, positionId} = await getPoolAndLiquidity(poolId,sdk,senderAddress);
+  const { pool, position, positionId } = await getPoolAndLiquidity(poolId, sdk, senderAddress);
   const liquidity = await sdk.Position.getLiquidity(position.objectId);
 
   const tx = new Transaction();

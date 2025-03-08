@@ -1,6 +1,10 @@
 import { MmtSDK, TickMath } from '../src';
 import { Transaction } from '@mysten/sui/transactions';
-import { estimateLiquidityForCoinA, executeTxExample, getCoinAmountFromLiquidity } from './example-utils';
+import {
+  estimateLiquidityForCoinA,
+  executeTxExample,
+  getCoinAmountFromLiquidity,
+} from './example-utils';
 import { TxHelper } from '../tests/transaction';
 import BN from 'bn.js';
 
