@@ -651,30 +651,31 @@ export class PoolModule implements BaseModule {
   public async getAllPools(headers?: HeadersInit): Promise<ExtendedPoolWithApr[]> {
     const pools = await fetchAllPoolsApi(this.sdk.baseUrl, headers);
     await this.validatePoolsId(pools.map((pool) => pool.poolId));
+
     const tokens = await this.getAllTokens();
 
     return Promise.all(
       pools.map(async (pool) => {
-        const apr = await this.getRewardsAPY(pool, tokens);
+        const aprBreakdown = await this.calcRewardApr(pool, tokens);
         return {
           ...pool,
-          aprBreakdown: {
-            fee: String(apr.feeAPR),
-            rewards: apr.rewarderApr.map((reward) => ({
-              coinType: reward.coinType,
-              apr: String(reward.rewarderApr),
-              amountPerDay: reward.amountPerDay,
-            })),
-          },
+          aprBreakdown,
         };
       }),
     );
   }
 
-  public async getPool(poolId: string, headers?: HeadersInit) {
+  public async getPool(poolId: string, headers?: HeadersInit): Promise<ExtendedPoolWithApr> {
     const pool = await fetchPoolApi(this.sdk.baseUrl, poolId, headers);
     await this.validatePoolsId([pool.poolId]);
-    return pool;
+
+    const tokens = await this.getAllTokens();
+
+    const aprBreakdown = await this.calcRewardApr(pool, tokens);
+    return {
+      ...pool,
+      aprBreakdown,
+    };
   }
 
   private async validatePoolsId(poolIds: string[]) {
@@ -697,6 +698,18 @@ export class PoolModule implements BaseModule {
         );
       }
     }
+  }
+
+  private async calcRewardApr(pool: ExtendedPool, tokens: TokenSchema[]) {
+    const apr = await this.getRewardsAPY(pool, tokens);
+    return {
+      fee: String(apr.feeAPR),
+      rewards: apr.rewarderApr.map((reward) => ({
+        coinType: reward.coinType,
+        apr: String(reward.rewarderApr),
+        amountPerDay: reward.amountPerDay,
+      })),
+    };
   }
 
   public async getAllTokens(headers?: HeadersInit) {
