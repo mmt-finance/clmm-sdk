@@ -2,8 +2,7 @@ import { PoolModule } from '../src/modules/poolModule';
 import { MmtSDK } from '../src';
 import { Transaction } from '@mysten/sui/transactions';
 import { SuiClient } from '@mysten/sui/client';
-import { CoinTransferIntention } from './transaction';
-import { buildCoinTransferTxb } from './transaction';
+import { TxHelper } from './transaction';
 import { DryRunTransactionBlockResponse } from '@mysten/sui/client';
 import { describe, test, beforeEach, expect } from '@jest/globals';
 
@@ -32,12 +31,7 @@ describe('PoolModule.swap', () => {
     const coinType = pool.tokenX.coinType;
     const senderAddress = '0xae55cde531ea8d707e69011301e78b2f21e6a0e1094e60033ab93a8e894e6871';
     const swapAmount = '10';
-    const intention: CoinTransferIntention = {
-      coinType: coinType,
-      amount: swapAmount,
-      recipient: senderAddress,
-    };
-    const { coin } = await buildCoinTransferTxb(txb, client, intention, intention.recipient);
+    const coin = await TxHelper.prepareCoin(txb, client, coinType, swapAmount, senderAddress);
 
     poolModule.swap(
       txb,

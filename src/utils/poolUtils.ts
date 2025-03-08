@@ -149,13 +149,13 @@ export async function fetchRewardersApy(baseUrl: string, poolId: string, headers
     body: null as null | string,
   };
 
-  const response = await fetch(`${baseUrl}/rewarders-apy/${poolId}`, options);
+  const response = await fetch(`${baseUrl}/pools/v3/rewarders-apy/${poolId}`, options);
   if (!response.ok) {
     throw new Error(`Request failed with status ${response.status}`);
   }
   const responseText = await response.text();
   if (!responseText) {
-    return [] as RewardersAPYSchema[];
+    throw new Error(`responseText is null`);
   }
 
   const responseData = JSON.parse(responseText);

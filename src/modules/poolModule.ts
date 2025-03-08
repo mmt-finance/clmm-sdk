@@ -730,8 +730,8 @@ export class PoolModule implements BaseModule {
 
     while (hasNextPage) {
       const response = await fetchTickLiquidityApi(this.sdk.BaseUrl, poolId, limit, offset);
-      allTickLiquidities = [...allTickLiquidities, ...response.tickData];
-      hasNextPage = response.hasNextPage;
+      allTickLiquidities = [...allTickLiquidities, ...response.data.tickData];
+      hasNextPage = response.data.hasNextPage;
       offset += limit;
     }
 
@@ -912,7 +912,7 @@ export class PoolModule implements BaseModule {
       const { coinAmountA, coinAmountB } = estLiquidityAndcoinAmountFromOneAmounts(
         pool_lower_tick_index,
         pool_upper_tick_index,
-        new BN((1 * 10 ** tokenA.decimals).toString()),
+        new BN((10 ** tokenA.decimals).toString()),
         true,
         false,
         0.01,

@@ -1,8 +1,6 @@
 import { PoolModule } from '../src/modules/poolModule';
 import { MmtSDK } from '../src';
 import { describe, it, beforeEach, expect } from '@jest/globals';
-import Decimal from 'decimal.js';
-import { DecimalUtils } from './decimal-utils';
 
 describe('PoolModule', () => {
   let sdk: MmtSDK;

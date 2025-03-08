@@ -20,7 +20,7 @@ on both mainnet and testnet.
 You can utilize the src/sdk NEW method to swiftly initialize the configuration. 
 
 ```typescript
-import { MmtSDK } from '@mmt-finance/mmt-clmm-sdk'
+import { MmtSDK } from '@mmt-finance/clmm-sdk'
 
 const mmtClmmSDK = MmtSDK.NEW({
   network: 'mainnet',
@@ -41,3 +41,7 @@ Now, you can start using MMT SDK.
 
 For a full detailed technical integration doc, please visit 
 [MMT Developer Docs](https://developers.mmt.finance/clmm-sdk/integrations).
+
+### Examples
+A comprehensive set of examples has been provided to demonstrate the fundamental usage of the SDK. 
+Please refer to the detailed guidelines for further information [example](examples/README.md)

@@ -3,11 +3,53 @@ import { Transaction } from '@mysten/sui/transactions';
 import { ModuleConstants } from '../src/utils/constants';
 import { SuiAddress } from '../src/types';
 import { isSuiStructEqual } from './utils';
+import type { TransactionArgument } from '@mysten/sui/src/transactions/Commands';
 
-export interface CoinTransferIntention {
-  recipient: SuiAddress;
-  coinType: string;
-  amount: string;
+export class TxHelper {
+  static async prepareSplitCoin(
+    tx: Transaction,
+    client: SuiClient,
+    coinType: string,
+    amount: string,
+    sender: SuiAddress,
+  ) {
+    if (isSuiStructEqual(coinType, ModuleConstants.suiCoinType)) {
+      const [coin] = tx.splitCoins(tx.gas, [tx.pure.u64(amount)]);
+      return coin;
+    } else {
+      const primary = await this.prepareCoin(tx, client, coinType, amount, sender);
+      const [coin] = tx.splitCoins(primary, [tx.pure.u64(amount)]);
+      return coin;
+    }
+  }
+
+  static async prepareCoin(
+    tx: Transaction,
+    client: SuiClient,
+    coinType: string,
+    amount: string,
+    sender: SuiAddress,
+  ) {
+    if (isSuiStructEqual(coinType, ModuleConstants.suiCoinType)) {
+      return tx.gas;
+    }
+    const objs = await getAllCoins(client, sender, coinType);
+    if (objs.length === 0) {
+      throw new Error('No valid coin found to send');
+    }
+    const totalBal = objs.reduce((sum, coin) => sum + BigInt(coin.balance), 0n);
+    if (totalBal < BigInt(amount)) {
+      throw new Error('Not enough balance');
+    }
+    const primary = tx.object(objs[0]?.coinObjectId ?? '');
+    if (objs.length > 1) {
+      tx.mergeCoins(
+        primary,
+        objs.slice(1).map((obj) => tx.object(obj.coinObjectId)),
+      );
+    }
+    return primary;
+  }
 }
 
 /**
@@ -36,46 +78,4 @@ export async function getAllCoins(
     cursor = currentPage.nextCursor;
   }
   return res;
-}
-
-export async function buildCoinTransferTxb(
-  txb: Transaction,
-  client: SuiClient,
-  intention: CoinTransferIntention,
-  sender: SuiAddress,
-) {
-  if (isSuiStructEqual(intention.coinType, ModuleConstants.suiCoinType)) {
-    return buildSuiCoinTransferTxb(txb, intention);
-  }
-  return buildOtherCoinTransferTxb(txb, client, intention, sender);
-}
-
-export function buildSuiCoinTransferTxb(txb: Transaction, intention: CoinTransferIntention) {
-  const [coin] = txb.splitCoins(txb.gas, [txb.pure.u64(intention.amount)]);
-  return { coin };
-}
-
-export async function buildOtherCoinTransferTxb(
-  txb: Transaction,
-  client: SuiClient,
-  intention: CoinTransferIntention,
-  sender: SuiAddress,
-) {
-  const objs = await getAllCoins(client, sender, intention.coinType);
-  if (objs.length === 0) {
-    throw new Error('No valid coin found to send');
-  }
-  const totalBal = objs.reduce((sum, coin) => sum + BigInt(coin.balance), 0n);
-  if (totalBal < BigInt(intention.amount)) {
-    throw new Error('Not enough balance');
-  }
-  const primary = txb.object(objs[0]?.coinObjectId ?? '');
-  if (objs.length > 1) {
-    txb.mergeCoins(
-      primary,
-      objs.slice(1).map((obj) => txb.object(obj.coinObjectId)),
-    );
-  }
-  const [coin] = txb.splitCoins(primary, [txb.pure.u64(intention.amount)]);
-  return { coin };
 }
