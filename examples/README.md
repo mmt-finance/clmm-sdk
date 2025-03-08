@@ -1,6 +1,6 @@
 ## Examples
 
-These examples show how to build common tasks in Typescript.
+A set of typescript scripts are provided to walk through the basic usage of @mmt-finance/clmm-sdk.
 
 ### Running an example
 
