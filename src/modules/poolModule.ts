@@ -4,7 +4,14 @@ import {
   TransactionObjectArgument,
 } from '@mysten/sui/transactions';
 import { ModuleConstants } from '../utils/constants';
-import { PoolParams, TickLiquidity, ExtendedPool, Rewarder, Reward } from '../types';
+import {
+  PoolParams,
+  TickLiquidity,
+  ExtendedPool,
+  Rewarder,
+  TokenSchema,
+  ExtendedPoolWithApr,
+} from '../types';
 import { MmtSDK } from '../sdk';
 import { BaseModule } from '../interfaces/BaseModule';
 import { txnArgument } from '../utils/common';
@@ -275,7 +282,7 @@ export class PoolModule implements BaseModule {
     }
   }
 
-  public addLiquidity(
+  public async addLiquidity(
     txb: Transaction,
     pool: PoolParams,
     position: string | TransactionArgument,
@@ -641,16 +648,34 @@ export class PoolModule implements BaseModule {
     }
   }
 
-  public async getAllPools(headers?: HeadersInit): Promise<ExtendedPool[]> {
+  public async getAllPools(headers?: HeadersInit): Promise<ExtendedPoolWithApr[]> {
     const pools = await fetchAllPoolsApi(this.sdk.baseUrl, headers);
     await this.validatePoolsId(pools.map((pool) => pool.poolId));
-    return pools;
+
+    const tokens = await this.getAllTokens();
+
+    return Promise.all(
+      pools.map(async (pool) => {
+        const aprBreakdown = await this.calcRewardApr(pool, tokens);
+        return {
+          ...pool,
+          aprBreakdown,
+        };
+      }),
+    );
   }
 
-  public async getPool(poolId: string, headers?: HeadersInit) {
+  public async getPool(poolId: string, headers?: HeadersInit): Promise<ExtendedPoolWithApr> {
     const pool = await fetchPoolApi(this.sdk.baseUrl, poolId, headers);
     await this.validatePoolsId([pool.poolId]);
-    return pool;
+
+    const tokens = await this.getAllTokens();
+
+    const aprBreakdown = await this.calcRewardApr(pool, tokens);
+    return {
+      ...pool,
+      aprBreakdown,
+    };
   }
 
   private async validatePoolsId(poolIds: string[]) {
@@ -675,6 +700,18 @@ export class PoolModule implements BaseModule {
     }
   }
 
+  private async calcRewardApr(pool: ExtendedPool, tokens: TokenSchema[]) {
+    const apr = await this.getRewardsAPY(pool, tokens);
+    return {
+      fee: String(apr.feeAPR),
+      rewards: apr.rewarderApr.map((reward) => ({
+        coinType: reward.coinType,
+        apr: String(reward.rewarderApr),
+        amountPerDay: reward.amountPerDay,
+      })),
+    };
+  }
+
   public async getAllTokens(headers?: HeadersInit) {
     const tokens = await fetchAllTokenApi(this.sdk.baseUrl, headers);
     return tokens;
@@ -692,7 +729,7 @@ export class PoolModule implements BaseModule {
     let allTickLiquidities: TickLiquidity[] = [];
 
     while (hasNextPage) {
-      const response = await fetchTickLiquidityApi(this.sdk.baseUrl, poolId, limit, offset);
+      const response = await fetchTickLiquidityApi(this.sdk.BaseUrl, poolId, limit, offset);
       allTickLiquidities = [...allTickLiquidities, ...response.data.tickData];
       hasNextPage = response.data.hasNextPage;
       offset += limit;
@@ -707,7 +744,7 @@ export class PoolModule implements BaseModule {
     limit: number,
     headers?: HeadersInit,
   ) {
-    const response = await fetchTickLiquidityApi(this.sdk.baseUrl, poolId, limit, offset);
+    const response = await fetchTickLiquidityApi(this.sdk.BaseUrl, poolId, limit, offset);
     return response;
   }
 
@@ -790,13 +827,13 @@ export class PoolModule implements BaseModule {
 
     poolRewarders?.map((item) => {
       if (item.hasEnded) return;
-      const poolRewardsFlowRateD = new Decimal(item.flowRate)
-        .div(new Decimal('18446744073709551616'))
-        .mul(86400);
-      const posRewarderPrice = new Decimal(item.rewardsPrice);
       const rewarderDecimals = item.rewardsDecimal;
-      const posRewarderAPR = poolRewardsFlowRateD
-        .div(new Decimal(10 ** rewarderDecimals))
+      const amountPerDay = new Decimal(item.flowRate)
+        .div(new Decimal('18446744073709551616'))
+        .mul(86400)
+        .div(new Decimal(10 ** rewarderDecimals));
+      const posRewarderPrice = new Decimal(item.rewardsPrice);
+      const posRewarderAPR = amountPerDay
         .mul(posRewarderPrice)
         .mul(
           new Decimal(deltaLiquidity.toString()).div(
@@ -809,6 +846,7 @@ export class PoolModule implements BaseModule {
       rewarderApr.push({
         rewarderApr: posRewarderAPR,
         coinType: item.coinType,
+        amountPerDay,
       });
     });
     return {
@@ -833,10 +871,10 @@ export class PoolModule implements BaseModule {
     return TVL;
   }
 
-  public async getRewardsAPY(pool: ExtendedPool) {
+  public async getRewardsAPY(pool: ExtendedPool, tokensInput?: TokenSchema[]) {
     try {
       const rewarders = pool?.rewarders;
-      const tokens = await this.getAllTokens();
+      const tokens = tokensInput || (await this.getAllTokens());
       const tokenA = tokens.find((token) => token.coinType === pool?.tokenXType);
       const tokenB = tokens.find((token) => token.coinType === pool?.tokenYType);
       const lower_price =
@@ -889,7 +927,6 @@ export class PoolModule implements BaseModule {
       const rewardsArr = rewarders?.map((rewarder) => {
         const coinType = rewarder.coin_type;
         const token = tokens.find((token) => token.coinType === coinType);
-        console.log(token.coinType, token.price);
         return {
           rewardsAmount: Number(rewarder.reward_amount),
           rewardsPrice: token?.price,

@@ -1,6 +1,6 @@
 {
   "name": "@mmt-finance/clmm-sdk",
-  "version": "1.0.1",
+  "version": "1.0.3",
   "description": "Mmt SDK to access the Mmt CLMM",
   "private": false,
   "author": "Mmt Finance",
@@ -29,6 +29,7 @@
     "build": "rm -rf dist && tsc --project tsconfig.build.json",
     "test": "jest",
     "prettier:fix": "npx prettier --write '**/*.{js,ts,json}' --log-level error",
+    "release": "yarn build && yarn publish",
     "scripts": "ts-node"
   },
   "peerDependencies": {
