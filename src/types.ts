@@ -68,9 +68,16 @@ export interface ExtendedPool extends PoolApi {
   volume24h: string;
   fees24h: string;
   rewarders: Rewarder[];
-  apy: number;
+  apy: string;
   tokenX: TokenSchema;
   tokenY: TokenSchema;
+}
+
+export interface ExtendedPoolWithApr extends ExtendedPool {
+  aprBreakdown: {
+    fee: string;
+    rewards: { coinType: string; apr: string; amountPerDay: number }[];
+  };
 }
 
 export interface TokenSchema {
