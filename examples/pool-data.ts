@@ -18,8 +18,7 @@ export async function main() {
   const tickInfo: TickLiquidity[] = await sdk.Pool.fetchAllTickLiquidities(poolId);
 
   // Fetch incentive rewards for a certain pool
-  const rewarderInfo: RewardersAPYSchema | RewardersAPYSchema[] =
-    await sdk.Pool.getRewardersApy(poolId);
+  const rewarderInfo: RewardersAPYSchema = await sdk.Pool.getRewardersApy(poolId);
 
   // Retrieve all supported tokens
   const tokens: TokenSchema[] = await sdk.Pool.getAllTokens();

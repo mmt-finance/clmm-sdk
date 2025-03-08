@@ -1,6 +1,32 @@
-import * as BN from 'bn.js';
+import BN from 'bn.js';
 import { MathUtil } from '../src/utils/math/commonMath';
 import Decimal from 'decimal.js';
+import { Transaction } from '@mysten/sui/transactions';
+import { MmtSDK } from '../src';
+import { Signer } from '@mysten/sui/cryptography';
+
+export async function executeTxExample({
+  tx,
+  sdk,
+  execution,
+}: {
+  tx: Transaction;
+  sdk: MmtSDK;
+  execution: { dryrun: false; signer: Signer } | { dryrun: true; address: string };
+}) {
+  if ('address' in execution) {
+    tx.setSender(execution.address);
+    const txBytes = await tx.build({ client: sdk.rpcClient });
+    return await sdk.rpcClient.dryRunTransactionBlock({
+      transactionBlock: txBytes,
+    });
+  }
+  const result = await sdk.rpcClient.signAndExecuteTransaction({
+    signer: execution.signer,
+    transaction: tx,
+  });
+  return await sdk.rpcClient.waitForTransaction({ digest: result.digest });
+}
 
 export function estimateLiquidityForCoinA(sqrtPriceX: BN, sqrtPriceY: BN, coinAmount: BN) {
   const lowerSqrtPriceX64 = BN.min(sqrtPriceX, sqrtPriceY);
@@ -52,4 +78,21 @@ export function getCoinAmountFromLiquidity(
     coinX: coinX.floor().toString(),
     coinY: coinY.floor().toString(),
   };
+}
+
+export async function getPoolAndLiquidity(poolId: string, sdk: MmtSDK, senderAddress: string){
+  const pool = await sdk.Pool.getPool(poolId);
+  if (!pool) {
+    throw new Error('Pool not found');
+  }
+  const userPositions = await sdk.Position.getAllUserPositions(senderAddress);
+  if (!userPositions || userPositions.length === 0) {
+    throw new Error('user has no position ');
+  }
+  const position = userPositions.find((pos) => pos.poolId === poolId);
+  if (!position) {
+    throw new Error('No matching position found for this poolId');
+  }
+
+  return {pool, position, positionId: position.objectId}
 }

@@ -30,3 +30,6 @@ Now, you can start using MMT SDK.
 ### Supported Features
 
 For a full detailed technical integration doc, please visit [MMT Developer Docs]().
+
+### Examples
+Please check here [example](examples/README.md)

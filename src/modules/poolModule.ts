@@ -275,7 +275,7 @@ export class PoolModule implements BaseModule {
     }
   }
 
-  public async addLiquidity(
+  public addLiquidity(
     txb: Transaction,
     pool: PoolParams,
     position: string | TransactionArgument,

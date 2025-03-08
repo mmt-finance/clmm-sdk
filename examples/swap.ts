@@ -1,8 +1,9 @@
 import { MmtSDK, TickMath } from '../src';
 import { Transaction } from '@mysten/sui/transactions';
-import { CoinTransferIntention, mergeCoinForTransferTxb } from '../tests/transaction';
 import Decimal from 'decimal.js';
-import { Ed25519Keypair } from '@mysten/sui/dist/cjs/keypairs/ed25519';
+import { TxHelper } from '../tests/transaction';
+import { executeTxExample } from './example-utils';
+import BN from 'bn.js';
 
 export async function main() {
   // Initialize SDK
@@ -24,19 +25,13 @@ export async function main() {
   const coinType = pool.tokenX.coinType;
   const senderAddress = '0xae55cde531ea8d707e69011301e78b2f21e6a0e1094e60033ab93a8e894e6871';
   const swapAmount = '10'; // Number of token X to be swapped
-  // Define the coin merge intention (sending token X)
-  const intention: CoinTransferIntention = {
-    coinType: coinType, // The type of coin being transferred
-    amount: swapAmount,
-    recipient: senderAddress, // The address that will receive the merged tokens
-  };
 
   // Merge coin for swap
-  const coin = await mergeCoinForTransferTxb(tx, sdk.rpcClient, intention, senderAddress);
+  const coin = await TxHelper.prepareCoin(tx, sdk.rpcClient, coinType, swapAmount, senderAddress);
 
   // Fetch the current price of the pool in X64 format and convert it to a price
   const currentPrice = TickMath.sqrtPriceX64ToPrice(
-    pool.currentSqrtPrice,
+    new BN(pool.currentSqrtPrice),
     pool.tokenX.decimals,
     pool.tokenY.decimals,
   );
@@ -61,17 +56,18 @@ export async function main() {
     coin, // Prepared coin in previous tx
     true, // Boolean indicating swap direction (true = X to Y)
     senderAddress,
-    limitSqrtPrice, // The maximum/minimum price to execute the swap
+    BigInt(limitSqrtPrice.toString()), // The maximum/minimum price to execute the swap
   );
 
   // Execute the transaction
-  const mnemonic = ''; // Empty mnemonic (should be replaced with a valid one)
-  const signer = Ed25519Keypair.deriveKeypair(mnemonic); // Generate keypair from mnemonic
-  const res = await sdk.rpcClient.signAndExecuteTransaction({
-    signer,
-    transaction: tx,
+  const resp = await executeTxExample({
+    tx,
+    sdk,
+    execution: { dryrun: true, address: senderAddress },
   });
-  const fin = await sdk.rpcClient.waitForTransaction({ digest: res.digest });
+  console.log(resp);
 }
 
-main();
+main()
+  .then(() => console.log('Swap successfully'))
+  .catch((error) => console.error('Swap failed:', error));

@@ -155,7 +155,7 @@ export async function fetchRewardersApy(baseUrl: string, poolId: string, headers
   }
   const responseText = await response.text();
   if (!responseText) {
-    return [] as RewardersAPYSchema[];
+    throw new Error(`responseText is null`);
   }
 
   const responseData = JSON.parse(responseText);

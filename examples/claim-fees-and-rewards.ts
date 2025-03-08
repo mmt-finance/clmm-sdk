@@ -1,5 +1,6 @@
 import { MmtSDK } from '../src';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
+import { executeTxExample } from './example-utils';
 
 export async function main() {
   // Initialize SDK & senderAddress
@@ -13,13 +14,14 @@ export async function main() {
   const tx = await sdk.Pool.collectAllPoolsRewards(senderAddress, pools); // Init collectAllPoolsRewards tx
 
   // Execute transaction
-  const mnemonic = '';
-  const keypair = Ed25519Keypair.deriveKeypair(mnemonic); // Define the user's mnemonic (should be replaced with an actual mnemonic)
-  const result = await sdk.rpcClient.signAndExecuteTransaction({
-    signer: keypair,
-    transaction: tx,
+  const resp = await executeTxExample({
+    tx,
+    sdk,
+    execution: { dryrun: true, address: senderAddress },
   });
-  const responce = await sdk.rpcClient.waitForTransaction({ digest: result.digest });
+  console.log(resp);
 }
 
-main();
+main()
+  .then(() => console.log('Claim fee and rewards successfully'))
+  .catch((error) => console.error('Claim fee and rewards failed:', error));

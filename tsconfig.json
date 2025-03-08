@@ -14,5 +14,5 @@
       "types": ["jest"]
     }
   },
-  "include": ["src/**/*", "scripts", "tests/*.ts"]
+  "include": ["src/**/*", "scripts", "tests/*.ts", "examples/*.ts"]
 }
