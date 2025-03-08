@@ -18,7 +18,6 @@ describe('MmtSDK', () => {
     const sdk = MmtSDK.NEW({
       network: network,
     });
-    console.log(Config.getDefaultSuiClientUrl(network));
     expect(sdk.PackageId).toEqual(Config.getDefaultClmmParams(network).packageId);
     expect(sdk.BaseUrl).toEqual(Config.getDefaultMmtApiUrl(network));
   });

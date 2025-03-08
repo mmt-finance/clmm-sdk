@@ -4,7 +4,7 @@ import {
   TransactionObjectArgument,
 } from '@mysten/sui/transactions';
 import { ModuleConstants } from '../utils/constants';
-import { PoolParams, TickLiquidity, ExtendedPool, Rewarder } from '../types';
+import { PoolParams, TickLiquidity, ExtendedPool, Rewarder, ExtendedPoolWithApr } from '../types';
 import { MmtSDK } from '../sdk';
 import { BaseModule } from '../interfaces/BaseModule';
 import { txnArgument } from '../utils/common';
@@ -641,7 +641,7 @@ export class PoolModule implements BaseModule {
     }
   }
 
-  public async getAllPools(headers?: HeadersInit): Promise<ExtendedPool[]> {
+  public async getAllPools(headers?: HeadersInit): Promise<ExtendedPoolWithApr[]> {
     const pools = await fetchAllPoolsApi(this.sdk.baseUrl, headers);
     await this.validatePoolsId(pools.map((pool) => pool.poolId));
     return pools;

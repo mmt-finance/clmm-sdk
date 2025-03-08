@@ -1,5 +1,5 @@
 import Decimal from 'decimal.js';
-import { ExtendedPool, RewardersAPYSchema, TokenSchema } from '../types';
+import { ExtendedPool, ExtendedPoolWithApr, RewardersAPYSchema, TokenSchema } from '../types';
 import { MathUtil } from './math/commonMath';
 import BN from 'bn.js';
 import { convertI32ToSigned, TickMath } from './math/tickMath';
@@ -54,7 +54,7 @@ export async function fetchAllPoolsApi(baseUrl: string, headers?: HeadersInit) {
     throw new Error(`Request failed with status ${response.status}`);
   }
 
-  return (await response.json())?.data as ExtendedPool[];
+  return (await response.json())?.data as ExtendedPoolWithApr[];
 }
 
 export async function fetchPoolApi(baseUrl: string, poolId: string, headers?: HeadersInit) {
