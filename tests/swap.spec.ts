@@ -37,7 +37,7 @@ describe('PoolModule.swap', () => {
       amount: swapAmount,
       recipient: senderAddress,
     };
-    const { coin } = await buildCoinTransferTxb(txb, client, intention, intention.recipient);
+    const coin = await buildCoinTransferTxb(txb, client, intention, intention.recipient);
 
     poolModule.swap(
       txb,

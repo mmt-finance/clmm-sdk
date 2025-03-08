@@ -519,7 +519,7 @@ export class PositionModule implements BaseModule {
 
     try {
       const tickIndexValue = bcs
-        .u64()
+        .u32()
         .parse(new Uint8Array(devInspectResult.results[0].returnValues[0][0]));
       return tickIndexValue;
     } catch (e) {
@@ -540,7 +540,7 @@ export class PositionModule implements BaseModule {
 
     try {
       const tickIndexValue = bcs
-        .u64()
+        .u32()
         .parse(new Uint8Array(devInspectResult.results[0].returnValues[0][0]));
       return tickIndexValue;
     } catch (e) {

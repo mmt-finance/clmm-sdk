@@ -4,7 +4,7 @@ import {
   TransactionObjectArgument,
 } from '@mysten/sui/transactions';
 import { ModuleConstants } from '../utils/constants';
-import { PoolParams, TickLiquidity, ExtendedPool, Rewarder } from '../types';
+import { PoolParams, TickLiquidity, ExtendedPool, Rewarder, Reward } from '../types';
 import { MmtSDK } from '../sdk';
 import { BaseModule } from '../interfaces/BaseModule';
 import { txnArgument } from '../utils/common';
@@ -692,14 +692,9 @@ export class PoolModule implements BaseModule {
     let allTickLiquidities: TickLiquidity[] = [];
 
     while (hasNextPage) {
-      const response = await fetchTickLiquidityApi(
-        'https://api-service-1094519046338.us-west1.run.app/',
-        poolId,
-        limit,
-        offset,
-      );
-      allTickLiquidities = [...allTickLiquidities, ...response.tickData];
-      hasNextPage = response.hasNextPage;
+      const response = await fetchTickLiquidityApi(this.sdk.baseUrl, poolId, limit, offset);
+      allTickLiquidities = [...allTickLiquidities, ...response.data.tickData];
+      hasNextPage = response.data.hasNextPage;
       offset += limit;
     }
 
@@ -712,12 +707,7 @@ export class PoolModule implements BaseModule {
     limit: number,
     headers?: HeadersInit,
   ) {
-    const response = await fetchTickLiquidityApi(
-      'https://api-service-1094519046338.us-west1.run.app/',
-      poolId,
-      limit,
-      offset,
-    );
+    const response = await fetchTickLiquidityApi(this.sdk.baseUrl, poolId, limit, offset);
     return response;
   }
 
@@ -884,7 +874,7 @@ export class PoolModule implements BaseModule {
       const { coinAmountA, coinAmountB } = estLiquidityAndcoinAmountFromOneAmounts(
         pool_lower_tick_index,
         pool_upper_tick_index,
-        new BN((1 * 10 ** tokenA.decimals).toString()),
+        new BN((10 ** tokenA.decimals).toString()),
         true,
         false,
         0.01,

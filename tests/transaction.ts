@@ -3,6 +3,7 @@ import { Transaction } from '@mysten/sui/transactions';
 import { ModuleConstants } from '../src/utils/constants';
 import { SuiAddress } from '../src/types';
 import { isSuiStructEqual } from './utils';
+import type { TransactionArgument } from '@mysten/sui/src/transactions/Commands';
 
 export interface CoinTransferIntention {
   recipient: SuiAddress;
@@ -52,10 +53,21 @@ export async function buildCoinTransferTxb(
 
 export function buildSuiCoinTransferTxb(txb: Transaction, intention: CoinTransferIntention) {
   const [coin] = txb.splitCoins(txb.gas, [txb.pure.u64(intention.amount)]);
-  return { coin };
+  return coin;
 }
 
 export async function buildOtherCoinTransferTxb(
+  txb: Transaction,
+  client: SuiClient,
+  intention: CoinTransferIntention,
+  sender: SuiAddress,
+) {
+  const primary = await mergeCoinForTransferTxb(txb, client, intention, sender);
+  const [coin] = txb.splitCoins(primary, [txb.pure.u64(intention.amount)]);
+  return coin;
+}
+
+export async function mergeCoinForTransferTxb(
   txb: Transaction,
   client: SuiClient,
   intention: CoinTransferIntention,
@@ -76,6 +88,5 @@ export async function buildOtherCoinTransferTxb(
       objs.slice(1).map((obj) => txb.object(obj.coinObjectId)),
     );
   }
-  const [coin] = txb.splitCoins(primary, [txb.pure.u64(intention.amount)]);
-  return { coin };
+  return primary;
 }

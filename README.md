@@ -18,7 +18,7 @@ on both mainnet and testnet.
 You can utilize the src/sdk NEW method to swiftly initialize the configuration. 
 
 ```typescript
-import { MmtSDK } from '@mmt-finance/mmt-clmm-sdk'
+import { MmtSDK } from '@mmt-finance/clmm-sdk'
 
 const mmtClmmSDK = MmtSDK.NEW({
   network: 'mainnet',
