@@ -43,4 +43,5 @@ For a full detailed technical integration doc, please visit
 [MMT Developer Docs](https://developers.mmt.finance/clmm-sdk/integrations).
 
 ### Examples
-please visit here [example](examples/README.md)
+A comprehensive set of examples has been provided to demonstrate the fundamental usage of the SDK. 
+Please refer to the detailed guidelines for further information [example](examples/README.md)

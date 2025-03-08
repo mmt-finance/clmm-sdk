@@ -4,37 +4,37 @@ These examples show how to build common tasks in Typescript.
 
 ### Running an example
 
-These examples use a linked version of the `mmt` package from the main repository. To run a test, first build the
-package in the top level directory of this repo.
+Install dependencies
 
 ```bash
-  yarn
+yarn
 ```
 
-At this point, you can run any of the examples in this directory. For example, to run the `swap` example:
+Run a specific example (E.g. swap.ts)
 
 ```bash
-  npx ts-node examples/swap.ts
+yarn scripts examples/swap.ts
 ```
 
-This will then print out the results of the test accordingly.
+### Execute transaction
 
-### Execute real transactions on the testnet
- Change executeTxExample and set dryrun as false and generate signer
-```
-const mnemonic = '';
+By default, transaction is evaluated in dryRun mode. To execute transaction,
+update the script as follows:
+
+```typescript
+const mnemonic = ''; // Replace mnemonic here
 const signer = Ed25519Keypair.deriveKeypair(mnemonic); // Define the user's mnemonic (should be replaced with an actual mnemonic)
 const resp = await executeTxExample({
-    tx,
-    sdk,
-    execution: { dryrun: false, signer: signer },
-  });
+  tx,
+  sdk,
+  execution: { dryrun: false, signer: signer },
+});
 ```
 
-### Execute transactions on the mainnet
- Generate mainnet sdk 
+### Set network to Mainnet
+
+Configure SDK to run on Mainnet network:
+
 ```
-const sdk = MmtSDK.NEW({
-network: 'mainnet',
-});
+const sdk = MmtSDK.NEW({ network: 'mainnet' });
 ```
