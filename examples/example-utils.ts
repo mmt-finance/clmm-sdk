@@ -80,7 +80,7 @@ export function getCoinAmountFromLiquidity(
   };
 }
 
-export async function getPoolAndLiquidity(poolId: string, sdk: MmtSDK, senderAddress: string){
+export async function getPoolAndLiquidity(poolId: string, sdk: MmtSDK, senderAddress: string) {
   const pool = await sdk.Pool.getPool(poolId);
   if (!pool) {
     throw new Error('Pool not found');
@@ -94,5 +94,5 @@ export async function getPoolAndLiquidity(poolId: string, sdk: MmtSDK, senderAdd
     throw new Error('No matching position found for this poolId');
   }
 
-  return {pool, position, positionId: position.objectId}
+  return { pool, position, positionId: position.objectId };
 }
