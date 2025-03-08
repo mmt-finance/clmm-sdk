@@ -729,12 +729,7 @@ export class PoolModule implements BaseModule {
     let allTickLiquidities: TickLiquidity[] = [];
 
     while (hasNextPage) {
-      const response = await fetchTickLiquidityApi(
-        'https://api-service-1094519046338.us-west1.run.app/',
-        poolId,
-        limit,
-        offset,
-      );
+      const response = await fetchTickLiquidityApi(this.sdk.BaseUrl, poolId, limit, offset);
       allTickLiquidities = [...allTickLiquidities, ...response.tickData];
       hasNextPage = response.hasNextPage;
       offset += limit;
@@ -749,12 +744,7 @@ export class PoolModule implements BaseModule {
     limit: number,
     headers?: HeadersInit,
   ) {
-    const response = await fetchTickLiquidityApi(
-      'https://api-service-1094519046338.us-west1.run.app/',
-      poolId,
-      limit,
-      offset,
-    );
+    const response = await fetchTickLiquidityApi(this.sdk.BaseUrl, poolId, limit, offset);
     return response;
   }
 
