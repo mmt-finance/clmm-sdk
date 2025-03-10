@@ -28,6 +28,7 @@ describe('PoolModule', () => {
       }, feeApr);
 
       expect(DecimalUtils.toBeCloseToDecimal(gotApr, aprDB));
+      expect(DecimalUtils.toBeCloseToDecimal(gotApr, new Decimal(pool.aprBreakdown.total)));
     });
   });
 
