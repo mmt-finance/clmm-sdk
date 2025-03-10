@@ -68,6 +68,9 @@ export interface ExtendedPool extends PoolApi {
   volume24h: string;
   fees24h: string;
   rewarders: Rewarder[];
+  /**
+   * @deprecated: use pool.aprBreakdown.total
+   */
   apy: string;
   tokenX: TokenSchema;
   tokenY: TokenSchema;

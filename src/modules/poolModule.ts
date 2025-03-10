@@ -659,6 +659,7 @@ export class PoolModule implements BaseModule {
         const aprBreakdown = await this.calcRewardApr(pool, tokens);
         return {
           ...pool,
+          apy: aprBreakdown.total,
           aprBreakdown,
         };
       }),
@@ -674,6 +675,7 @@ export class PoolModule implements BaseModule {
     const aprBreakdown = await this.calcRewardApr(pool, tokens);
     return {
       ...pool,
+      apy: aprBreakdown.total,
       aprBreakdown,
     };
   }
