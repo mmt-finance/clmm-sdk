@@ -1,6 +1,8 @@
 import { PoolModule } from '../src/modules/poolModule';
 import { MmtSDK } from '../src';
 import { describe, it, beforeEach, expect } from '@jest/globals';
+import Decimal from 'decimal.js';
+import { DecimalUtils } from './decimal-utils';
 
 describe('PoolModule', () => {
   let sdk: MmtSDK;
@@ -19,14 +21,14 @@ describe('PoolModule', () => {
     pools.forEach((pool) => {
       expect(pool.aprBreakdown).toBeDefined();
 
-      // The apr equal may differ in backend latency. Skip check for now.
-      // const aprDB = new Decimal(pool.apy);
-      // const feeApr = new Decimal(pool.aprBreakdown.fee);
-      // const gotApr = pool.aprBreakdown.rewards.reduce((res, reward) => {
-      //   return res.add(reward.apr);
-      // }, feeApr);
-      //
-      // expect(DecimalUtils.toBeCloseToDecimal(gotApr, aprDB));
+      const aprDB = new Decimal(pool.apy);
+      const feeApr = new Decimal(pool.aprBreakdown.fee);
+      const gotApr = pool.aprBreakdown.rewards.reduce((res, reward) => {
+        return res.add(reward.apr);
+      }, feeApr);
+
+      expect(DecimalUtils.toBeCloseToDecimal(gotApr, aprDB));
+      expect(DecimalUtils.toBeCloseToDecimal(gotApr, new Decimal(pool.aprBreakdown.total)));
     });
   });
 
