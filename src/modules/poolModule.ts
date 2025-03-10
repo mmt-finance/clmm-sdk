@@ -701,10 +701,14 @@ export class PoolModule implements BaseModule {
   }
 
   private async calcRewardApr(pool: ExtendedPool, tokens: TokenSchema[]) {
-    const apr = await this.getRewardsAPY(pool, tokens);
+    const aprInfo = await this.getRewardsAPY(pool, tokens);
+    const totalApr = aprInfo.rewarderApr.reduce((res, rewarder) => {
+      return res.add(new Decimal(rewarder.rewarderApr));
+    }, aprInfo.feeAPR);
     return {
-      fee: String(apr.feeAPR),
-      rewards: apr.rewarderApr.map((reward) => ({
+      total: String(totalApr),
+      fee: String(aprInfo.feeAPR),
+      rewards: aprInfo.rewarderApr.map((reward) => ({
         coinType: reward.coinType,
         apr: String(reward.rewarderApr),
         amountPerDay: reward.amountPerDay,

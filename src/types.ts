@@ -75,6 +75,7 @@ export interface ExtendedPool extends PoolApi {
 
 export interface ExtendedPoolWithApr extends ExtendedPool {
   aprBreakdown: {
+    total: string;
     fee: string;
     rewards: { coinType: string; apr: string; amountPerDay: number }[];
   };
