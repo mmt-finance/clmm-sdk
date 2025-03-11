@@ -728,7 +728,11 @@ export class PoolModule implements BaseModule {
     return token;
   }
 
-  public async fetchAllTickLiquidities(poolId: string, reverse: boolean, headers?: HeadersInit) {
+  public async fetchAllTickLiquidities(
+    poolId: string,
+    reverse: boolean = false,
+    headers?: HeadersInit,
+  ) {
     let offset = 0;
     const limit = 1000; // maximum limit
     let hasNextPage = true;
@@ -754,7 +758,7 @@ export class PoolModule implements BaseModule {
     poolId: string,
     offset: number,
     limit: number,
-    reverse: boolean,
+    reverse: boolean = false,
     headers?: HeadersInit,
   ) {
     const response = await fetchTickLiquidityApi(this.sdk.BaseUrl, poolId, limit, offset);
