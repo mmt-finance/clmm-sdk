@@ -728,7 +728,7 @@ export class PoolModule implements BaseModule {
     return token;
   }
 
-  public async fetchAllTickLiquidities(poolId: string, headers?: HeadersInit) {
+  public async fetchAllTickLiquidities(poolId: string, reverse: boolean, headers?: HeadersInit) {
     let offset = 0;
     const limit = 1000; // maximum limit
     let hasNextPage = true;
@@ -736,7 +736,13 @@ export class PoolModule implements BaseModule {
 
     while (hasNextPage) {
       const response = await fetchTickLiquidityApi(this.sdk.BaseUrl, poolId, limit, offset);
-      allTickLiquidities = [...allTickLiquidities, ...response.data.tickData];
+      const tickData: TickLiquidity[] = response.data?.tickData || [];
+      if (reverse && tickData.length > 0) {
+        tickData.map((tickLiquidity) => {
+          tickLiquidity.tickIndex = -tickLiquidity.tickIndex;
+        });
+      }
+      allTickLiquidities = [...allTickLiquidities, ...tickData];
       hasNextPage = response.data.hasNextPage;
       offset += limit;
     }
@@ -748,9 +754,17 @@ export class PoolModule implements BaseModule {
     poolId: string,
     offset: number,
     limit: number,
+    reverse: boolean,
     headers?: HeadersInit,
   ) {
     const response = await fetchTickLiquidityApi(this.sdk.BaseUrl, poolId, limit, offset);
+    const tickData: TickLiquidity[] = response.data?.tickData || [];
+    if (reverse && tickData.length > 0) {
+      tickData.map((tickLiquidity) => {
+        tickLiquidity.tickIndex = -tickLiquidity.tickIndex;
+      });
+    }
+    response.data.tickData = tickData;
     return response;
   }
 
