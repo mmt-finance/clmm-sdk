@@ -1,6 +1,6 @@
 {
   "name": "@mmt-finance/clmm-sdk",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Mmt SDK to access the Mmt CLMM",
   "private": false,
   "author": "Mmt Finance",
