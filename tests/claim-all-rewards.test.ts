@@ -46,4 +46,9 @@ describe('PoolModule.collectAllPoolsRewards', () => {
     expect(resp.effects.status.status).toBe('success');
     expect(resp.events.length).toEqual(eventCount);
   }, 30000);
+
+  it('playground', async () => {
+    const userAddress = '0x7f40d98beb09f8ba8113d5cce95743b913ec27deb2fd408518dc752ec94d8c1b';
+    await sdk.Position.getAllUserPositions(userAddress);
+  });
 });
