@@ -416,7 +416,7 @@ export const handleMmtCetusSwap = (
   }
 };
 
-// mmtV2 pool id -> MmtV3 pool id
+// momentumV2 pool id -> MomentumV3 pool id
 export const mappedMmtV3Pool = {
   '0x5af4976b871fa1813362f352fa4cada3883a96191bb7212db1bd5d13685ae305': {
     id: '0x367e02acb99632e18db69c3e93d89d21eb721e1d1fcebc0f6853667337450acc',
@@ -443,7 +443,7 @@ export const mappedMmtV3Pool = {
     upperScale: '22591727467072087864',
   },
 };
-// mmtV2 pool id -> Cetus pool id
+// momentumV2 pool id -> Cetus pool id
 export const mappedCetusPool = {
   '0x5af4976b871fa1813362f352fa4cada3883a96191bb7212db1bd5d13685ae305': {
     id: '0xcf994611fd4c48e277ce3ffd4d4364c914af2c3cbb05f7bf6facd371de688630',
