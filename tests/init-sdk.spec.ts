@@ -1,7 +1,8 @@
-import { MmtSDK, RpcClient } from '../src';
+import { MmtSDK } from '../src';
 import { ClmmConsts } from '../src/types';
 import { describe, it, expect } from '@jest/globals';
 import { Config } from '../src/config';
+import { SuiClient } from '@mysten/sui/client';
 
 describe('MmtSDK', () => {
   it('MmtSDK NEW mainnet positive', async () => {
@@ -63,9 +64,9 @@ describe('MmtSDK', () => {
   it('Pass client positive', async () => {
     const network = 'testnet';
     const suiClientUrl = 'https://fullnode.testnet.sui.io:443';
-    const sdk = MmtSDK.NEW_CLIENT({
+    const sdk = MmtSDK.NEW({
       network: network,
-      client: new RpcClient({ url: suiClientUrl }),
+      client: new SuiClient({ url: suiClientUrl }),
     });
     expect(sdk.PackageId).toEqual(Config.getDefaultClmmParams(network).packageId);
     expect(sdk.BaseUrl).toEqual(Config.getDefaultMmtApiUrl(network));
@@ -75,6 +76,16 @@ describe('MmtSDK', () => {
     const suiClientUrl = '';
     await expect(async () => {
       new MmtSDK(suiClientUrl);
+    }).rejects.toThrowError('Either suiClientUrl or client must be provided');
+
+    const undefinedUrl = undefined;
+    await expect(async () => {
+      new MmtSDK(undefinedUrl);
+    }).rejects.toThrowError('Either suiClientUrl or client must be provided');
+
+    const emptyUrl = '   ';
+    await expect(async () => {
+      new MmtSDK(emptyUrl);
     }).rejects.toThrowError('Either suiClientUrl or client must be provided');
   });
 });
