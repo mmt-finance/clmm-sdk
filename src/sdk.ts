@@ -30,10 +30,8 @@ export class MmtSDK {
   ) {
     if (client) {
       this.rpcModule = client;
-    } else if (suiClientUrl && suiClientUrl.trim() !== '') {
+    } else if (suiClientUrl) {
       this.rpcModule = new SuiClient({ url: suiClientUrl });
-    } else {
-      throw new Error('Either suiClientUrl or client must be provided');
     }
     const network = isMainnet ? 'mainnet' : 'testnet';
     this.baseUrl = mmtApiUrl || Config.getDefaultMmtApiUrl(network);
@@ -59,6 +57,9 @@ export class MmtSDK {
     const clmm = sdkParams?.contractConst ?? { ...Config.getDefaultClmmParams(network) };
     const mmtApiUrl = sdkParams?.mmtApiUrl || Config.getDefaultMmtApiUrl(network);
     const suiClientUrl = sdkParams?.suiClientUrl || Config.getDefaultSuiClientUrl(network);
+    if (!suiClientUrl.trim() && !sdkParams?.client) {
+      throw new Error('Either suiClientUrl or client must be provided');
+    }
     return new MmtSDK(
       suiClientUrl,
       clmm.packageId,

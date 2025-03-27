@@ -73,19 +73,11 @@ describe('MmtSDK', () => {
   });
 
   it('Pass client negative', async () => {
-    const suiClientUrl = '';
-    await expect(async () => {
-      new MmtSDK(suiClientUrl);
-    }).rejects.toThrowError('Either suiClientUrl or client must be provided');
-
-    const undefinedUrl = undefined;
-    await expect(async () => {
-      new MmtSDK(undefinedUrl);
-    }).rejects.toThrowError('Either suiClientUrl or client must be provided');
-
-    const emptyUrl = '   ';
-    await expect(async () => {
-      new MmtSDK(emptyUrl);
-    }).rejects.toThrowError('Either suiClientUrl or client must be provided');
+    const suiClientUrl = '    ';
+    expect(() =>
+      MmtSDK.NEW({
+        suiClientUrl: suiClientUrl,
+      }),
+    ).toThrow('Either suiClientUrl or client must be provided');
   });
 });
