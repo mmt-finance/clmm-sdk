@@ -11,6 +11,7 @@ import {
   Rewarder,
   TokenSchema,
   ExtendedPoolWithApr,
+  PoolTokenType,
 } from '../types';
 import { MmtSDK } from '../sdk';
 import { BaseModule } from '../interfaces/BaseModule';
@@ -32,6 +33,7 @@ import BN from 'bn.js';
 import Decimal from 'decimal.js';
 import { convertI32ToSigned, TickMath } from '../utils/math/tickMath';
 import { MathUtil } from '../utils/math/commonMath';
+import { getBestRoute, getRoutes, sortRoutes } from './routeModule';
 
 export const Q_64 = '18446744073709551616';
 export class PoolModule implements BaseModule {
@@ -982,5 +984,29 @@ export class PoolModule implements BaseModule {
       console.error('Error getting rewards apy.');
       console.error(e);
     }
+  }
+
+  public async fetchRoute(sourceToken: string, targetToken: string, amount: bigint) {
+    const extendedPools: ExtendedPool[] = await this._sdk.Pool.getAllPools();
+    if (!extendedPools || extendedPools.length === 0) {
+      throw new Error('No pools found');
+    }
+    const pools: PoolTokenType[] = extendedPools.map((x) => {
+      const pool: PoolTokenType = {
+        tokenXType: x.tokenXType,
+        tokenYType: x.tokenYType,
+        poolId: x.poolId,
+      };
+      return pool;
+    });
+    //   maxPaths = 10,
+    const pathResult = getRoutes(sourceToken, targetToken, pools);
+    if (!pathResult || pathResult.length === 0) {
+      throw new Error('No path found');
+    }
+
+    return pathResult.length === 1
+      ? pathResult[0]
+      : getBestRoute(pathResult.length <= 10 ? pathResult : sortRoutes(pathResult));
   }
 }
