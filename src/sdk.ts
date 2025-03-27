@@ -26,10 +26,15 @@ export class MmtSDK {
     isMainnet: boolean = true,
     mmtApiUrl: string = '',
     contractConst?: ClmmConsts,
+    client?: RpcClient,
   ) {
-    this.rpcModule = new RpcClient({
-      url: suiClientUrl,
-    });
+    if (suiClientUrl && suiClientUrl.trim() !== '') {
+      this.rpcModule = new RpcClient({ url: suiClientUrl });
+    } else if (client) {
+      this.rpcModule = client;
+    } else {
+      throw new Error('Either suiClientUrl or client must be provided');
+    }
     const network = isMainnet ? 'mainnet' : 'testnet';
     this.baseUrl = mmtApiUrl || Config.getDefaultMmtApiUrl(network);
     this.contractConst = contractConst || {
@@ -54,6 +59,30 @@ export class MmtSDK {
     const mmtApiUrl = sdkParams?.mmtApiUrl || Config.getDefaultMmtApiUrl(network);
     const suiClientUrl = sdkParams?.suiClientUrl || Config.getDefaultSuiClientUrl(network);
     return new MmtSDK(suiClientUrl, clmm.packageId, network !== 'testnet', mmtApiUrl, clmm);
+  }
+
+  static NEW_CLIENT(sdkParams?: {
+    network?: 'mainnet' | 'testnet' | 'custom';
+    contractConst?: ClmmConsts;
+    mmtApiUrl?: string;
+    suiClientUrl?: string;
+    client?: RpcClient;
+  }) {
+    if (sdkParams.network === 'custom' && !sdkParams?.contractConst) {
+      throw new Error('missing contractConst for custom network');
+    }
+    const network = sdkParams?.network || 'mainnet';
+    const clmm = sdkParams?.contractConst ?? { ...Config.getDefaultClmmParams(network) };
+    const mmtApiUrl = sdkParams?.mmtApiUrl || Config.getDefaultMmtApiUrl(network);
+    const suiClientUrl = sdkParams?.suiClientUrl || Config.getDefaultSuiClientUrl(network);
+    return new MmtSDK(
+      sdkParams?.client ? '' : suiClientUrl,
+      clmm.packageId,
+      network !== 'testnet',
+      mmtApiUrl,
+      clmm,
+      sdkParams?.client,
+    );
   }
 
   get rpcClient(): RpcClient {
