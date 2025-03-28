@@ -2,6 +2,7 @@ import { MmtSDK } from '../src';
 import { ClmmConsts } from '../src/types';
 import { describe, it, expect } from '@jest/globals';
 import { Config } from '../src/config';
+import { SuiClient } from '@mysten/sui/client';
 
 describe('MmtSDK', () => {
   it('MmtSDK NEW mainnet positive', async () => {
@@ -18,7 +19,6 @@ describe('MmtSDK', () => {
     const sdk = MmtSDK.NEW({
       network: network,
     });
-    console.log(Config.getDefaultSuiClientUrl(network));
     expect(sdk.PackageId).toEqual(Config.getDefaultClmmParams(network).packageId);
     expect(sdk.BaseUrl).toEqual(Config.getDefaultMmtApiUrl(network));
   });
@@ -59,5 +59,25 @@ describe('MmtSDK', () => {
     const sdk = new MmtSDK(suiClientUrl);
     expect(sdk.PackageId).toEqual(Config.getDefaultClmmParams(network).packageId);
     expect(sdk.BaseUrl).toEqual(Config.getDefaultMmtApiUrl(network));
+  });
+
+  it('Pass client positive', async () => {
+    const network = 'testnet';
+    const suiClientUrl = 'https://fullnode.testnet.sui.io:443';
+    const sdk = MmtSDK.NEW({
+      network: network,
+      client: new SuiClient({ url: suiClientUrl }),
+    });
+    expect(sdk.PackageId).toEqual(Config.getDefaultClmmParams(network).packageId);
+    expect(sdk.BaseUrl).toEqual(Config.getDefaultMmtApiUrl(network));
+  });
+
+  it('Pass client negative', async () => {
+    const suiClientUrl = '    ';
+    expect(() =>
+      MmtSDK.NEW({
+        suiClientUrl: suiClientUrl,
+      }),
+    ).toThrow('Either suiClientUrl or client must be provided');
   });
 });
