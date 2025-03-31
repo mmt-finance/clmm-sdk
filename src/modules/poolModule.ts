@@ -33,7 +33,6 @@ import BN from 'bn.js';
 import Decimal from 'decimal.js';
 import { convertI32ToSigned, TickMath } from '../utils/math/tickMath';
 import { MathUtil } from '../utils/math/commonMath';
-import { getBestRoute, getRoutes, sortRoutes } from './routeModule';
 
 export const Q_64 = '18446744073709551616';
 export class PoolModule implements BaseModule {
@@ -987,26 +986,36 @@ export class PoolModule implements BaseModule {
   }
 
   public async fetchRoute(sourceToken: string, targetToken: string, amount: bigint) {
-    const extendedPools: ExtendedPool[] = await this._sdk.Pool.getAllPools();
+    const extendedPools = await this._sdk.Pool.getAllPools();
+    const sourceTokenSchema = await this._sdk.Pool.getToken(sourceToken);
     if (!extendedPools || extendedPools.length === 0) {
       throw new Error('No pools found');
     }
-    const pools: PoolTokenType[] = extendedPools.map((x) => {
-      const pool: PoolTokenType = {
-        tokenXType: x.tokenXType,
-        tokenYType: x.tokenYType,
-        poolId: x.poolId,
-      };
-      return pool;
-    });
-    //   maxPaths = 10,
-    const pathResult = getRoutes(sourceToken, targetToken, pools);
-    if (!pathResult || pathResult.length === 0) {
+    const pools: PoolTokenType[] = extendedPools
+      .filter((x) => Number(x.tvl) > 0)
+      .map((x) => {
+        const pool: PoolTokenType = {
+          poolId: x.poolId,
+          tokenXType: x.tokenXType,
+          tokenYType: x.tokenYType,
+          tvl: x.tvl,
+        };
+        return pool;
+      });
+    const pathResults = this.sdk.Route.getRoutes(sourceToken, targetToken, pools);
+    if (!pathResults || pathResults.length === 0) {
       throw new Error('No path found');
     }
-
-    return pathResult.length === 1
-      ? pathResult[0]
-      : getBestRoute(pathResult.length <= 10 ? pathResult : sortRoutes(pathResult));
+    const bestResult =
+      pathResults.length === 1
+        ? pathResults[0]
+        : await this.sdk.Route.getBestRoute(
+            this.sdk.PackageId,
+            pathResults.length <= 10 ? pathResults : this.sdk.Route.sortRoutes(pathResults, pools),
+            sourceTokenSchema,
+            pools,
+            amount,
+          );
+    return bestResult.pools;
   }
 }
