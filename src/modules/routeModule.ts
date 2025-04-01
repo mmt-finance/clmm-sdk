@@ -62,7 +62,8 @@ export class RouteModule implements BaseModule {
   ): Promise<PathResult | null> {
     const graph = new Graph(false);
     const vertexMap = new Map<string, GraphVertex>();
-    const edgeCount = new Map<string, number>();
+    const tokenXToYRepeatTracker = new Map<string, number>();
+    const tokenRepeatTracker = new Map<string, number>();
 
     const getVertex = (key: string) => {
       if (!vertexMap.has(key)) {
@@ -71,32 +72,43 @@ export class RouteModule implements BaseModule {
       return vertexMap.get(key)!;
     };
 
-    const addEdge = (from: string, to: string, pool: PoolTokenType, weight: number) => {
-      const edgeKey = `${from}->${to}`;
-      const reverseKey = `${to}->${from}`;
-      const fromVertex = getVertex(from);
-
-      if (!edgeCount.has(edgeKey)) {
-        edgeCount.set(edgeKey, 1);
-        const toVertex = getVertex(to);
-        graph.addEdge(new GraphEdge(fromVertex, toVertex, weight));
-        this.edgeToPool.set(edgeKey, pool);
-        this.edgeToPool.set(reverseKey, pool);
-        this.poolWeightMap.set(edgeKey, weight);
-        this.poolWeightMap.set(reverseKey, weight);
-      } else {
-        const count = edgeCount.get(edgeKey)!;
-        const virtual = `${to}#${count}@${from}`;
-        edgeCount.set(edgeKey, count + 1);
-        const virtualVertex = getVertex(virtual);
-        const toVertex = getVertex(to);
-        graph.addEdge(new GraphEdge(fromVertex, virtualVertex, weight));
-        graph.addEdge(new GraphEdge(virtualVertex, toVertex, 0));
-        this.edgeToPool.set(`${from}->${virtual}`, pool);
-        this.poolWeightMap.set(`${from}->${virtual}`, weight);
-      }
+    const getAvailableTokenKey = (token: string): string => {
+      const count = tokenRepeatTracker.get(token) ?? 0;
+      const nextCount = count + 1;
+      const virtual = `${token}#${nextCount}`;
+      tokenRepeatTracker.set(token, nextCount);
+      return virtual;
     };
 
+    const addEdge = (from: string, to: string, pool: PoolTokenType, weight: number) => {
+      const tokenXToYRepeat = tokenXToYRepeatTracker.get(`${from}-${to}`) ?? 0;
+      const toRepeate = tokenRepeatTracker.get(to) ?? 0;
+      if (tokenXToYRepeat <= toRepeate && tokenXToYRepeat != 0) {
+        tokenXToYRepeatTracker.set(`${from}-${to}`, tokenXToYRepeat + 1);
+        return;
+      }
+      let finalTo = to;
+      const fromVertex = getVertex(from);
+      let toVertex = getVertex(finalTo);
+
+      if (graph.findEdge(fromVertex, toVertex)) {
+        const virtualTo = getAvailableTokenKey(to);
+        finalTo = virtualTo;
+
+        const virtualVertex = getVertex(finalTo);
+        const toVertex = getVertex(to);
+
+        graph.addEdge(new GraphEdge(virtualVertex, toVertex, 0));
+      }
+      toVertex = getVertex(finalTo);
+      graph.addEdge(new GraphEdge(fromVertex, toVertex, weight));
+
+      tokenXToYRepeatTracker.set(`${from}-${to}`, tokenXToYRepeat + 1);
+      this.edgeToPool.set(`${from}->${finalTo}`, pool);
+      this.poolWeightMap.set(`${from}->${finalTo}`, weight);
+    };
+
+    const pathResults: PathResult[] = [];
     for (const pool of pools) {
       const weight = 1 / Math.log(Number(pool.tvl) + 1);
       addEdge(pool.tokenXType, pool.tokenYType, pool, weight);
@@ -108,23 +120,31 @@ export class RouteModule implements BaseModule {
 
     const pathIters = graph.findAllPath(fromVertex, toVertex);
     const paths = Array.from(pathIters);
-    console.log(paths);
-    console.log(paths.length);
-    const deduped = new Map<string, PathResult>();
 
     for (const path of paths) {
       const tokenNames = path.map((v) => (v.value.includes('#') ? v.value.split('#')[0] : v.value));
+      const group = new Map<string, number>();
+      const seen = new Set<string>();
       const simplified: string[] = [];
+      let isInvalid = false;
+
       for (const token of tokenNames) {
-        if (simplified.length === 0 || simplified[simplified.length - 1] !== token) {
+        const count = group.get(token) || 0;
+        group.set(token, count + 1);
+        if (count + 1 > 2) {
+          isInvalid = true;
+          break;
+        }
+
+        if (!seen.has(token)) {
+          seen.add(token);
           simplified.push(token);
         }
       }
 
-      if (simplified.length > maxHops + 1) continue;
-
-      const key = simplified.join('->');
-      if (deduped.has(key)) continue;
+      if (simplified.length > maxHops + 1 || isInvalid) {
+        continue;
+      }
 
       const poolIds: string[] = [];
       const isXToY: boolean[] = [];
@@ -133,31 +153,37 @@ export class RouteModule implements BaseModule {
         const from = path[i].value;
         const to = path[i + 1].value;
         const edgeKey = `${from}->${to}`;
-        const pool = this.edgeToPool.get(edgeKey);
+        const edgeKeyReserve = `${to}->${from}`;
+        const pool = this.edgeToPool.get(edgeKey)
+          ? this.edgeToPool.get(edgeKey)
+          : this.edgeToPool.get(edgeKeyReserve);
         if (!pool) continue;
         poolIds.push(pool.poolId);
         isXToY.push(pool.tokenXType === from);
       }
 
-      deduped.set(key, {
+      const pathResult: PathResult = {
         tokens: simplified,
         pools: poolIds,
         isXToY,
-      });
+      };
+      pathResults.push(pathResult);
     }
+    console.log('pathResults:', pathResults);
+    console.log('pathResults length:', pathResults.length);
 
-    const sorted = [...deduped.values()].sort((a, b) => {
+    const sorted = [...pathResults.values()].sort((a, b) => {
       if (a.tokens.length !== b.tokens.length) return a.tokens.length - b.tokens.length;
-      const weightA = a.pools.reduce(
-        (sum, _, idx) =>
-          sum + (this.poolWeightMap.get(`${a.tokens[idx]}->${a.tokens[idx + 1]}`) ?? 0),
-        0,
-      );
-      const weightB = b.pools.reduce(
-        (sum, _, idx) =>
-          sum + (this.poolWeightMap.get(`${b.tokens[idx]}->${b.tokens[idx + 1]}`) ?? 0),
-        0,
-      );
+      const getWeightSum = (tokens: string[]) =>
+        tokens.slice(0, -1).reduce((sum, token, idx) => {
+          const key1 = `${tokens[idx]}->${tokens[idx + 1]}`;
+          const key2 = `${tokens[idx + 1]}->${tokens[idx]}`;
+          const weight = this.poolWeightMap.get(key1) ?? this.poolWeightMap.get(key2) ?? 0;
+          return sum + weight;
+        }, 0);
+
+      const weightA = getWeightSum(a.tokens);
+      const weightB = getWeightSum(b.tokens);
       return weightA - weightB;
     });
 
