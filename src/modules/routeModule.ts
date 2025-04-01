@@ -1,12 +1,15 @@
-import { Graph, PathResult, PoolTokenType, TokenSchema } from '../types';
+import { ExtendedPoolWithApr, PathResult, PoolTokenType, TokenSchema } from '../types';
 import { Transaction } from '@mysten/sui/transactions';
 import { normalizeSuiAddress } from '@mysten/sui/utils';
 import { bcs } from '@mysten/sui/bcs';
 import { BaseModule } from '../interfaces/BaseModule';
 import { MmtSDK } from '../sdk';
-import { DRY_RUN_PATH_LEN } from '../utils/constants';
+import { Graph, GraphVertex, GraphEdge } from '@syntsugar/cc-graph';
+
 export class RouteModule implements BaseModule {
   protected _sdk: MmtSDK;
+  private edgeToPool = new Map<string, PoolTokenType>();
+  private poolWeightMap = new Map<string, number>();
 
   constructor(sdk: MmtSDK) {
     this._sdk = sdk;
@@ -16,73 +19,158 @@ export class RouteModule implements BaseModule {
     return this._sdk;
   }
 
-  getRoutes(sourceToken: string, targetToken: string, pools: PoolTokenType[], maxHops: number = 4) {
-    const graph: Graph = this.buildGraph(pools);
-    const queue: {
-      tokens: string[];
-      pools: string[];
-      isXToY: boolean[];
-      usedPools: Set<string>;
-    }[] = [
-      {
-        tokens: [sourceToken],
-        pools: [],
-        isXToY: [],
-        usedPools: new Set(),
-      },
-    ];
-
-    const maxPathLength = maxHops + 1;
-    const results: PathResult[] = [];
-
-    while (queue.length > 0) {
-      const current = queue.shift()!;
-      const currentToken = current.tokens[current.tokens.length - 1];
-
-      if (
-        current.tokens.length > 1 &&
-        current.tokens.length <= maxPathLength &&
-        currentToken === targetToken
-      ) {
-        results.push({ tokens: current.tokens, pools: current.pools, isXToY: current.isXToY });
-        continue;
-      }
-
-      if (current.tokens.length >= maxPathLength) continue;
-
-      const nextPools = graph.get(currentToken) || [];
-      for (const pool of nextPools) {
-        if (current.usedPools.has(pool.poolId)) continue;
-
-        const nextToken = pool.tokenXType === currentToken ? pool.tokenYType : pool.tokenXType;
-        const isXToY = pool.tokenXType === currentToken;
-
-        queue.push({
-          tokens: [...current.tokens, nextToken],
-          pools: [...current.pools, pool.poolId],
-          isXToY: [...current.isXToY, isXToY],
-          usedPools: new Set([...current.usedPools, pool.poolId]),
-        });
-      }
+  public async fetchRoute(
+    sourceToken: string,
+    targetToken: string,
+    amount: bigint,
+    extendedPools?: ExtendedPoolWithApr[],
+    tokens?: TokenSchema[],
+  ) {
+    if (!extendedPools?.length) {
+      extendedPools = await this._sdk.Pool.getAllPools();
     }
 
-    return results;
+    const sourceTokenSchema = tokens?.length
+      ? tokens.find((token) => token.coinType === sourceToken)
+      : await this._sdk.Pool.getToken(sourceToken);
+
+    if (!extendedPools?.length || !sourceTokenSchema) {
+      throw new Error('No pools or source token found');
+    }
+
+    const pools: PoolTokenType[] = extendedPools
+      .filter((x) => Number(x.tvl) > 0)
+      .map((x) => ({
+        poolId: x.poolId,
+        tokenXType: x.tokenXType,
+        tokenYType: x.tokenYType,
+        tvl: x.tvl,
+      }));
+
+    const best = await this.getRoutes(sourceToken, targetToken, amount, sourceTokenSchema, pools);
+    if (!best) throw new Error('No path found');
+    return best.pools;
   }
 
-  buildGraph(pools: PoolTokenType[]): Graph {
-    const graph: Graph = new Map();
+  private async getRoutes(
+    sourceToken: string,
+    targetToken: string,
+    amount: bigint,
+    sourceTokenSchema: TokenSchema,
+    pools: PoolTokenType[],
+    maxHops = 4,
+  ): Promise<PathResult | null> {
+    const graph = new Graph(false);
+    const vertexMap = new Map<string, GraphVertex>();
+    const edgeCount = new Map<string, number>();
+
+    const getVertex = (key: string) => {
+      if (!vertexMap.has(key)) {
+        vertexMap.set(key, new GraphVertex(key));
+      }
+      return vertexMap.get(key)!;
+    };
+
+    const addEdge = (from: string, to: string, pool: PoolTokenType, weight: number) => {
+      const edgeKey = `${from}->${to}`;
+      const reverseKey = `${to}->${from}`;
+      const fromVertex = getVertex(from);
+
+      if (!edgeCount.has(edgeKey)) {
+        edgeCount.set(edgeKey, 1);
+        const toVertex = getVertex(to);
+        graph.addEdge(new GraphEdge(fromVertex, toVertex, weight));
+        this.edgeToPool.set(edgeKey, pool);
+        this.edgeToPool.set(reverseKey, pool);
+        this.poolWeightMap.set(edgeKey, weight);
+        this.poolWeightMap.set(reverseKey, weight);
+      } else {
+        const count = edgeCount.get(edgeKey)!;
+        const virtual = `${to}#${count}@${from}`;
+        edgeCount.set(edgeKey, count + 1);
+        const virtualVertex = getVertex(virtual);
+        const toVertex = getVertex(to);
+        graph.addEdge(new GraphEdge(fromVertex, virtualVertex, weight));
+        graph.addEdge(new GraphEdge(virtualVertex, toVertex, 0));
+        this.edgeToPool.set(`${from}->${virtual}`, pool);
+        this.poolWeightMap.set(`${from}->${virtual}`, weight);
+      }
+    };
 
     for (const pool of pools) {
-      if (!graph.has(pool.tokenXType)) graph.set(pool.tokenXType, []);
-      if (!graph.has(pool.tokenYType)) graph.set(pool.tokenYType, []);
-      graph.get(pool.tokenXType)!.push(pool);
-      graph.get(pool.tokenYType)!.push(pool);
+      const weight = 1 / Math.log(Number(pool.tvl) + 1);
+      addEdge(pool.tokenXType, pool.tokenYType, pool, weight);
     }
 
-    return graph;
+    const fromVertex = vertexMap.get(sourceToken);
+    const toVertex = vertexMap.get(targetToken);
+    if (!fromVertex || !toVertex) return null;
+
+    const pathIters = graph.findAllPath(fromVertex, toVertex);
+    const paths = Array.from(pathIters);
+    console.log(paths);
+    console.log(paths.length);
+    // const deduped = new Map<string, PathResult>();
+    //
+    // for (const path of paths) {
+    //   const tokenNames = path.map((v) => (v.value.includes('#') ? v.value.split('#')[0] : v.value));
+    //   const simplified: string[] = [];
+    //   for (const token of tokenNames) {
+    //     if (simplified.length === 0 || simplified[simplified.length - 1] !== token) {
+    //       simplified.push(token);
+    //     }
+    //   }
+    //
+    //   if (simplified.length > maxHops + 1) continue;
+    //
+    //   const key = simplified.join('->');
+    //   if (deduped.has(key)) continue;
+    //
+    //   const poolIds: string[] = [];
+    //   const isXToY: boolean[] = [];
+    //
+    //   for (let i = 0; i < path.length - 1; i++) {
+    //     const from = path[i].value;
+    //     const to = path[i + 1].value;
+    //     const edgeKey = `${from}->${to}`;
+    //     const pool = this.edgeToPool.get(edgeKey);
+    //     if (!pool) continue;
+    //     poolIds.push(pool.poolId);
+    //     isXToY.push(pool.tokenXType === from);
+    //   }
+    //
+    //   deduped.set(key, {
+    //     tokens: simplified,
+    //     pools: poolIds,
+    //     isXToY,
+    //   });
+    // }
+    //
+    // const sorted = [...deduped.values()].sort((a, b) => {
+    //   if (a.tokens.length !== b.tokens.length) return a.tokens.length - b.tokens.length;
+    //   const weightA = a.pools.reduce(
+    //     (sum, _, idx) =>
+    //       sum + (this.poolWeightMap.get(`${a.tokens[idx]}->${a.tokens[idx + 1]}`) ?? 0),
+    //     0,
+    //   );
+    //   const weightB = b.pools.reduce(
+    //     (sum, _, idx) =>
+    //       sum + (this.poolWeightMap.get(`${b.tokens[idx]}->${b.tokens[idx + 1]}`) ?? 0),
+    //     0,
+    //   );
+    //   return weightA - weightB;
+    // });
+    //
+    // const top10 = sorted.slice(0, 10);
+    // return await this.devRunSwapAndChooseBestRoute(
+    //   top10,
+    //   pools,
+    //   amount,
+    //   sourceTokenSchema.decimals,
+    // );
   }
 
-  async devRunSwapAndChooseBestRoute(
+  private async devRunSwapAndChooseBestRoute(
     paths: PathResult[],
     pools: PoolTokenType[],
     sourceAmount: bigint,
@@ -111,7 +199,7 @@ export class RouteModule implements BaseModule {
     return bestPath;
   }
 
-  async dryRunSwap(
+  private async dryRunSwap(
     tx: Transaction,
     pathResult: PathResult,
     pools: PoolTokenType[],
@@ -128,7 +216,7 @@ export class RouteModule implements BaseModule {
     const HighLimitPrice = BigInt('79226673515401279992447579050');
 
     for (const poolId of pathResult.pools) {
-      const pool = pools.find((p) => p.poolId === poolId);
+      const pool = pools.find((p) => p.poolId === poolId)!;
       const { tokenXType, tokenYType } = pool;
       const isXtoY = swapDirectionMap.get(poolId);
 
@@ -151,12 +239,9 @@ export class RouteModule implements BaseModule {
     }
 
     const res = await this.sdk.rpcClient.devInspectTransactionBlock({
-      // @ts-ignore
       transactionBlock: tx,
       sender: normalizeSuiAddress('0x0'),
-      additionalArgs: {
-        showRawTxnDataAndEffects: true,
-      },
+      additionalArgs: { showRawTxnDataAndEffects: true },
     });
 
     const lastIndex = 2 * (pathResult.pools.length - 1) + 1;
@@ -168,55 +253,5 @@ export class RouteModule implements BaseModule {
     }
 
     return 0n;
-  }
-
-  async getBestRoute(
-    paths: PathResult[],
-    sourceToken: TokenSchema,
-    pools: PoolTokenType[],
-    amount: bigint,
-  ): Promise<PathResult> {
-    if (paths.length === 0) {
-      throw new Error('No route found');
-    }
-    return await this.devRunSwapAndChooseBestRoute(paths, pools, amount, sourceToken.decimals);
-  }
-
-  sortRoutes(paths: PathResult[], pools: PoolTokenType[]): PathResult[] {
-    const sorted = paths.sort((a, b) => a.tokens.length - b.tokens.length);
-    const poolIdTvlMap = Object.fromEntries(pools.map((pool) => [pool.poolId, pool.tvl]));
-    const groups = new Map<number, PathResult[]>();
-    for (const path of sorted) {
-      const len = path.tokens.length;
-      if (!groups.has(len)) groups.set(len, []);
-      groups.get(len)!.push(path);
-    }
-
-    const result: PathResult[] = [];
-    const groupLens = [...groups.keys()].sort((a, b) => a - b); // 确保长度升序
-
-    for (const len of groupLens) {
-      if (result.length == DRY_RUN_PATH_LEN) break;
-      const group = groups.get(len)!;
-      if (result.length + group.length <= DRY_RUN_PATH_LEN) {
-        result.push(...group);
-      } else {
-        const remaining = DRY_RUN_PATH_LEN - result.length;
-        const remainingGroup = group
-          .map((path) => {
-            const totalTvl = path.pools.reduce((sum, poolId) => {
-              return sum + (Number(poolIdTvlMap[poolId]) ?? 0);
-            }, 0);
-            return { path, totalTvl };
-          })
-          .sort((a, b) => b.totalTvl - a.totalTvl)
-          .slice(0, remaining)
-          .map((item) => item.path);
-
-        result.push(...remainingGroup);
-        break;
-      }
-    }
-    return result;
   }
 }
