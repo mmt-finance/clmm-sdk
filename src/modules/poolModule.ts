@@ -984,37 +984,4 @@ export class PoolModule implements BaseModule {
       console.error(e);
     }
   }
-
-  public async fetchRoute(sourceToken: string, targetToken: string, amount: bigint) {
-    const extendedPools = await this._sdk.Pool.getAllPools();
-    const sourceTokenSchema = await this._sdk.Pool.getToken(sourceToken);
-    if (!extendedPools || extendedPools.length === 0) {
-      throw new Error('No pools found');
-    }
-    const pools: PoolTokenType[] = extendedPools
-      .filter((x) => Number(x.tvl) > 0)
-      .map((x) => {
-        const pool: PoolTokenType = {
-          poolId: x.poolId,
-          tokenXType: x.tokenXType,
-          tokenYType: x.tokenYType,
-          tvl: x.tvl,
-        };
-        return pool;
-      });
-    const pathResults = this.sdk.Route.getRoutes(sourceToken, targetToken, pools);
-    if (!pathResults || pathResults.length === 0) {
-      throw new Error('No path found');
-    }
-    const bestResult =
-      pathResults.length === 1
-        ? pathResults[0]
-        : await this.sdk.Route.getBestRoute(
-            pathResults.length <= 10 ? pathResults : this.sdk.Route.sortRoutes(pathResults, pools),
-            sourceTokenSchema,
-            pools,
-            amount,
-          );
-    return bestResult.pools;
-  }
 }

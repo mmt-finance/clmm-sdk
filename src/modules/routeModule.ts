@@ -58,13 +58,53 @@ export class RouteModule implements BaseModule {
     amount: bigint,
     sourceTokenSchema: TokenSchema,
     pools: PoolTokenType[],
-    maxHops = 4,
-  ): Promise<PathResult | null> {
+    maxHops?: 4,
+  ) {
     const graph = new Graph(false);
     const vertexMap = new Map<string, GraphVertex>();
-    const tokenXToYRepeatTracker = new Map<string, number>();
     const tokenRepeatTracker = new Map<string, number>();
+    const tokenXToYRepeatTracker = new Map<string, number>();
 
+    this.buildGraphFromPools(pools, graph, vertexMap, tokenRepeatTracker, tokenXToYRepeatTracker);
+
+    const fromVertex = vertexMap.get(sourceToken);
+    const toVertex = vertexMap.get(targetToken);
+    if (!fromVertex || !toVertex) return null;
+
+    const paths = Array.from(graph.findAllPath(fromVertex, toVertex));
+
+    const pathResults: PathResult[] = [];
+
+    for (const path of paths) {
+      const tokenNames = path.map((v) => (v.value.includes('#') ? v.value.split('#')[0] : v.value));
+
+      const { valid, simplified } = this.isPathValid(tokenNames, maxHops);
+      if (!valid) continue;
+
+      const { poolIds, isXToY } = this.extractPoolInfo(path);
+      if (poolIds.length !== path.length - 1) continue;
+
+      pathResults.push({ tokens: simplified, pools: poolIds, isXToY });
+    }
+
+    const sorted = this.sortPaths(pathResults);
+    const top10 = sorted.slice(0, 10);
+
+    return await this.devRunSwapAndChooseBestRoute(
+      top10,
+      pools,
+      amount,
+      sourceTokenSchema.decimals,
+    );
+  }
+
+  private buildGraphFromPools(
+    pools: PoolTokenType[],
+    graph: Graph,
+    vertexMap: Map<string, GraphVertex>,
+    tokenRepeatTracker: Map<string, number>,
+    tokenXToYRepeatTracker: Map<string, number>,
+  ) {
     const getVertex = (key: string) => {
       if (!vertexMap.has(key)) {
         vertexMap.set(key, new GraphVertex(key));
@@ -75,125 +115,104 @@ export class RouteModule implements BaseModule {
     const getAvailableTokenKey = (token: string): string => {
       const count = tokenRepeatTracker.get(token) ?? 0;
       const nextCount = count + 1;
-      const virtual = `${token}#${nextCount}`;
       tokenRepeatTracker.set(token, nextCount);
-      return virtual;
+      return `${token}#${nextCount}`;
     };
 
     const addEdge = (from: string, to: string, pool: PoolTokenType, weight: number) => {
-      const tokenXToYRepeat = tokenXToYRepeatTracker.get(`${from}-${to}`) ?? 0;
-      const toRepeate = tokenRepeatTracker.get(to) ?? 0;
-      if (tokenXToYRepeat <= toRepeate && tokenXToYRepeat != 0) {
-        tokenXToYRepeatTracker.set(`${from}-${to}`, tokenXToYRepeat + 1);
+      const key = `${from}-${to}`;
+      const repeatCount = tokenXToYRepeatTracker.get(key) ?? 0;
+      const toCount = tokenRepeatTracker.get(to) ?? 0;
+
+      if (repeatCount <= toCount && repeatCount !== 0) {
+        tokenXToYRepeatTracker.set(key, repeatCount + 1);
         return;
       }
+
       let finalTo = to;
       const fromVertex = getVertex(from);
       let toVertex = getVertex(finalTo);
 
       if (graph.findEdge(fromVertex, toVertex)) {
-        const virtualTo = getAvailableTokenKey(to);
-        finalTo = virtualTo;
-
+        finalTo = getAvailableTokenKey(to);
         const virtualVertex = getVertex(finalTo);
-        const toVertex = getVertex(to);
-
-        graph.addEdge(new GraphEdge(virtualVertex, toVertex, 0));
+        const realVertex = getVertex(to);
+        graph.addEdge(new GraphEdge(virtualVertex, realVertex, 0));
       }
+
       toVertex = getVertex(finalTo);
       graph.addEdge(new GraphEdge(fromVertex, toVertex, weight));
 
-      tokenXToYRepeatTracker.set(`${from}-${to}`, tokenXToYRepeat + 1);
+      tokenXToYRepeatTracker.set(key, repeatCount + 1);
       this.edgeToPool.set(`${from}->${finalTo}`, pool);
       this.poolWeightMap.set(`${from}->${finalTo}`, weight);
     };
 
-    const pathResults: PathResult[] = [];
     for (const pool of pools) {
       const weight = 1 / Math.log(Number(pool.tvl) + 1);
       addEdge(pool.tokenXType, pool.tokenYType, pool, weight);
     }
+  }
 
-    const fromVertex = vertexMap.get(sourceToken);
-    const toVertex = vertexMap.get(targetToken);
-    if (!fromVertex || !toVertex) return null;
+  private isPathValid(
+    tokenNames: string[],
+    maxHops: number,
+  ): { valid: boolean; simplified: string[] } {
+    const group = new Map<string, number>();
+    const seen = new Set<string>();
+    const simplified: string[] = [];
 
-    const pathIters = graph.findAllPath(fromVertex, toVertex);
-    const paths = Array.from(pathIters);
+    for (const token of tokenNames) {
+      const count = group.get(token) || 0;
+      group.set(token, count + 1);
+      if (count + 1 > 2) return { valid: false, simplified: [] };
 
-    for (const path of paths) {
-      const tokenNames = path.map((v) => (v.value.includes('#') ? v.value.split('#')[0] : v.value));
-      const group = new Map<string, number>();
-      const seen = new Set<string>();
-      const simplified: string[] = [];
-      let isInvalid = false;
-
-      for (const token of tokenNames) {
-        const count = group.get(token) || 0;
-        group.set(token, count + 1);
-        if (count + 1 > 2) {
-          isInvalid = true;
-          break;
-        }
-
-        if (!seen.has(token)) {
-          seen.add(token);
-          simplified.push(token);
-        }
+      if (!seen.has(token)) {
+        seen.add(token);
+        simplified.push(token);
       }
-
-      if (simplified.length > maxHops + 1 || isInvalid) {
-        continue;
-      }
-
-      const poolIds: string[] = [];
-      const isXToY: boolean[] = [];
-
-      for (let i = 0; i < path.length - 1; i++) {
-        const from = path[i].value;
-        const to = path[i + 1].value;
-        const edgeKey = `${from}->${to}`;
-        const edgeKeyReserve = `${to}->${from}`;
-        const pool = this.edgeToPool.get(edgeKey)
-          ? this.edgeToPool.get(edgeKey)
-          : this.edgeToPool.get(edgeKeyReserve);
-        if (!pool) continue;
-        poolIds.push(pool.poolId);
-        isXToY.push(pool.tokenXType === from);
-      }
-
-      const pathResult: PathResult = {
-        tokens: simplified,
-        pools: poolIds,
-        isXToY,
-      };
-      pathResults.push(pathResult);
     }
-    console.log('pathResults:', pathResults);
-    console.log('pathResults length:', pathResults.length);
 
-    const sorted = [...pathResults.values()].sort((a, b) => {
-      if (a.tokens.length !== b.tokens.length) return a.tokens.length - b.tokens.length;
-      const getWeightSum = (tokens: string[]) =>
-        tokens.slice(0, -1).reduce((sum, token, idx) => {
-          const key1 = `${tokens[idx]}->${tokens[idx + 1]}`;
-          const key2 = `${tokens[idx + 1]}->${tokens[idx]}`;
-          const weight = this.poolWeightMap.get(key1) ?? this.poolWeightMap.get(key2) ?? 0;
-          return sum + weight;
-        }, 0);
+    if (simplified.length > maxHops + 1) return { valid: false, simplified: [] };
 
-      const weightA = getWeightSum(a.tokens);
-      const weightB = getWeightSum(b.tokens);
-      return weightA - weightB;
+    return { valid: true, simplified };
+  }
+
+  private extractPoolInfo(path: GraphVertex[]): { poolIds: string[]; isXToY: boolean[] } {
+    const poolIds: string[] = [];
+    const isXToY: boolean[] = [];
+
+    for (let i = 0; i < path.length - 1; i++) {
+      const from = path[i].value;
+      const to = path[i + 1].value;
+      const edgeKey = `${from}->${to}`;
+      const edgeKeyRev = `${to}->${from}`;
+
+      const pool = this.edgeToPool.get(edgeKey) ?? this.edgeToPool.get(edgeKeyRev);
+      if (!pool) continue;
+
+      poolIds.push(pool.poolId);
+      isXToY.push(pool.tokenXType === from);
+    }
+
+    return { poolIds, isXToY };
+  }
+
+  private sortPaths(paths: PathResult[]): PathResult[] {
+    const getWeightSum = (tokens: string[]) =>
+      tokens.slice(0, -1).reduce((sum, _, idx) => {
+        const key1 = `${tokens[idx]}->${tokens[idx + 1]}`;
+        const key2 = `${tokens[idx + 1]}->${tokens[idx]}`;
+        const weight = this.poolWeightMap.get(key1) ?? this.poolWeightMap.get(key2) ?? 0;
+        return sum + weight;
+      }, 0);
+
+    return [...paths].sort((a, b) => {
+      if (a.tokens.length !== b.tokens.length) {
+        return a.tokens.length - b.tokens.length;
+      }
+      return getWeightSum(a.tokens) - getWeightSum(b.tokens);
     });
-
-    const top10 = sorted.slice(0, 10);
-    return await this.devRunSwapAndChooseBestRoute(
-      top10,
-      pools,
-      amount,
-      sourceTokenSchema.decimals,
-    );
   }
 
   private async devRunSwapAndChooseBestRoute(
