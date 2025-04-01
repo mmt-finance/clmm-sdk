@@ -110,64 +110,64 @@ export class RouteModule implements BaseModule {
     const paths = Array.from(pathIters);
     console.log(paths);
     console.log(paths.length);
-    // const deduped = new Map<string, PathResult>();
-    //
-    // for (const path of paths) {
-    //   const tokenNames = path.map((v) => (v.value.includes('#') ? v.value.split('#')[0] : v.value));
-    //   const simplified: string[] = [];
-    //   for (const token of tokenNames) {
-    //     if (simplified.length === 0 || simplified[simplified.length - 1] !== token) {
-    //       simplified.push(token);
-    //     }
-    //   }
-    //
-    //   if (simplified.length > maxHops + 1) continue;
-    //
-    //   const key = simplified.join('->');
-    //   if (deduped.has(key)) continue;
-    //
-    //   const poolIds: string[] = [];
-    //   const isXToY: boolean[] = [];
-    //
-    //   for (let i = 0; i < path.length - 1; i++) {
-    //     const from = path[i].value;
-    //     const to = path[i + 1].value;
-    //     const edgeKey = `${from}->${to}`;
-    //     const pool = this.edgeToPool.get(edgeKey);
-    //     if (!pool) continue;
-    //     poolIds.push(pool.poolId);
-    //     isXToY.push(pool.tokenXType === from);
-    //   }
-    //
-    //   deduped.set(key, {
-    //     tokens: simplified,
-    //     pools: poolIds,
-    //     isXToY,
-    //   });
-    // }
-    //
-    // const sorted = [...deduped.values()].sort((a, b) => {
-    //   if (a.tokens.length !== b.tokens.length) return a.tokens.length - b.tokens.length;
-    //   const weightA = a.pools.reduce(
-    //     (sum, _, idx) =>
-    //       sum + (this.poolWeightMap.get(`${a.tokens[idx]}->${a.tokens[idx + 1]}`) ?? 0),
-    //     0,
-    //   );
-    //   const weightB = b.pools.reduce(
-    //     (sum, _, idx) =>
-    //       sum + (this.poolWeightMap.get(`${b.tokens[idx]}->${b.tokens[idx + 1]}`) ?? 0),
-    //     0,
-    //   );
-    //   return weightA - weightB;
-    // });
-    //
-    // const top10 = sorted.slice(0, 10);
-    // return await this.devRunSwapAndChooseBestRoute(
-    //   top10,
-    //   pools,
-    //   amount,
-    //   sourceTokenSchema.decimals,
-    // );
+    const deduped = new Map<string, PathResult>();
+
+    for (const path of paths) {
+      const tokenNames = path.map((v) => (v.value.includes('#') ? v.value.split('#')[0] : v.value));
+      const simplified: string[] = [];
+      for (const token of tokenNames) {
+        if (simplified.length === 0 || simplified[simplified.length - 1] !== token) {
+          simplified.push(token);
+        }
+      }
+
+      if (simplified.length > maxHops + 1) continue;
+
+      const key = simplified.join('->');
+      if (deduped.has(key)) continue;
+
+      const poolIds: string[] = [];
+      const isXToY: boolean[] = [];
+
+      for (let i = 0; i < path.length - 1; i++) {
+        const from = path[i].value;
+        const to = path[i + 1].value;
+        const edgeKey = `${from}->${to}`;
+        const pool = this.edgeToPool.get(edgeKey);
+        if (!pool) continue;
+        poolIds.push(pool.poolId);
+        isXToY.push(pool.tokenXType === from);
+      }
+
+      deduped.set(key, {
+        tokens: simplified,
+        pools: poolIds,
+        isXToY,
+      });
+    }
+
+    const sorted = [...deduped.values()].sort((a, b) => {
+      if (a.tokens.length !== b.tokens.length) return a.tokens.length - b.tokens.length;
+      const weightA = a.pools.reduce(
+        (sum, _, idx) =>
+          sum + (this.poolWeightMap.get(`${a.tokens[idx]}->${a.tokens[idx + 1]}`) ?? 0),
+        0,
+      );
+      const weightB = b.pools.reduce(
+        (sum, _, idx) =>
+          sum + (this.poolWeightMap.get(`${b.tokens[idx]}->${b.tokens[idx + 1]}`) ?? 0),
+        0,
+      );
+      return weightA - weightB;
+    });
+
+    const top10 = sorted.slice(0, 10);
+    return await this.devRunSwapAndChooseBestRoute(
+      top10,
+      pools,
+      amount,
+      sourceTokenSchema.decimals,
+    );
   }
 
   private async devRunSwapAndChooseBestRoute(
