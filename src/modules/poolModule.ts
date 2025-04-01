@@ -1010,7 +1010,6 @@ export class PoolModule implements BaseModule {
       pathResults.length === 1
         ? pathResults[0]
         : await this.sdk.Route.getBestRoute(
-            this.sdk.PackageId,
             pathResults.length <= 10 ? pathResults : this.sdk.Route.sortRoutes(pathResults, pools),
             sourceTokenSchema,
             pools,

@@ -4,6 +4,7 @@ import { normalizeSuiAddress } from '@mysten/sui/utils';
 import { bcs } from '@mysten/sui/bcs';
 import { BaseModule } from '../interfaces/BaseModule';
 import { MmtSDK } from '../sdk';
+import { DRY_RUN_PATH_LEN } from '../utils/constants';
 export class RouteModule implements BaseModule {
   protected _sdk: MmtSDK;
 
@@ -82,7 +83,6 @@ export class RouteModule implements BaseModule {
   }
 
   async devRunSwapAndChooseBestRoute(
-    packageId: string,
     paths: PathResult[],
     pools: PoolTokenType[],
     sourceAmount: bigint,
@@ -92,13 +92,11 @@ export class RouteModule implements BaseModule {
     let maxOutput = BigInt(0);
     for (const path of paths) {
       let output = BigInt(0);
-      console.log('path:', path);
 
       try {
         const tx = new Transaction();
         const sourceAmountIn = tx.pure.u64(Number(sourceAmount) * 10 ** sourceDecimals);
-        output = await this.dryRunSwap(tx, packageId, path, pools, sourceAmountIn);
-        console.log('output:', output);
+        output = await this.dryRunSwap(tx, path, pools, sourceAmountIn);
       } catch (err) {
         console.warn(`Dry run failed on path:`, path, err);
         continue;
@@ -115,7 +113,6 @@ export class RouteModule implements BaseModule {
 
   async dryRunSwap(
     tx: Transaction,
-    packageId: string,
     pathResult: PathResult,
     pools: PoolTokenType[],
     sourceAmount: any,
@@ -134,10 +131,9 @@ export class RouteModule implements BaseModule {
       const pool = pools.find((p) => p.poolId === poolId);
       const { tokenXType, tokenYType } = pool;
       const isXtoY = swapDirectionMap.get(poolId);
-      console.log('poolId:', poolId);
 
       const swapResult = tx.moveCall({
-        target: `${packageId}::trade::compute_swap_result`,
+        target: `${this.sdk.PackageId}::trade::compute_swap_result`,
         typeArguments: [tokenXType, tokenYType],
         arguments: [
           tx.object(poolId),
@@ -149,7 +145,7 @@ export class RouteModule implements BaseModule {
       });
 
       inputAmount = tx.moveCall({
-        target: `${packageId}::trade::get_state_amount_calculated`,
+        target: `${this.sdk.PackageId}::trade::get_state_amount_calculated`,
         arguments: [swapResult],
       });
     }
@@ -164,8 +160,6 @@ export class RouteModule implements BaseModule {
     });
 
     const lastIndex = 2 * (pathResult.pools.length - 1) + 1;
-    console.log('pathResult.pools.length', pathResult.pools.length);
-    console.log('lastIndex', lastIndex);
     const amountOut = res.results?.[lastIndex]?.returnValues?.[0]?.[0];
 
     if (amountOut) {
@@ -177,7 +171,6 @@ export class RouteModule implements BaseModule {
   }
 
   async getBestRoute(
-    packageId: string,
     paths: PathResult[],
     sourceToken: TokenSchema,
     pools: PoolTokenType[],
@@ -186,14 +179,7 @@ export class RouteModule implements BaseModule {
     if (paths.length === 0) {
       throw new Error('No route found');
     }
-    // let amountIn = tx.pure.u64(Number(amount) * 10 ** sourceToken.decimals);
-    return await this.devRunSwapAndChooseBestRoute(
-      packageId,
-      paths,
-      pools,
-      amount,
-      sourceToken.decimals,
-    );
+    return await this.devRunSwapAndChooseBestRoute(paths, pools, amount, sourceToken.decimals);
   }
 
   sortRoutes(paths: PathResult[], pools: PoolTokenType[]): PathResult[] {
@@ -210,12 +196,12 @@ export class RouteModule implements BaseModule {
     const groupLens = [...groups.keys()].sort((a, b) => a - b); // 确保长度升序
 
     for (const len of groupLens) {
-      if (result.length == 10) break;
+      if (result.length == DRY_RUN_PATH_LEN) break;
       const group = groups.get(len)!;
-      if (result.length + group.length <= 10) {
+      if (result.length + group.length <= DRY_RUN_PATH_LEN) {
         result.push(...group);
       } else {
-        const remaining = 10 - result.length;
+        const remaining = DRY_RUN_PATH_LEN - result.length;
         const remainingGroup = group
           .map((path) => {
             const totalTvl = path.pools.reduce((sum, poolId) => {
