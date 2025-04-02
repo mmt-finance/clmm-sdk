@@ -6,23 +6,75 @@ import ALL_POOL_DATA from './__test_data__/all-pools.json';
 
 describe('RouteModule', () => {
   let sdk: MmtSDK;
-  let poolModule;
+  let routeModule;
 
   beforeEach(() => {
     sdk = MmtSDK.NEW({
       network: 'mainnet',
     });
-    poolModule = sdk.Pool;
-  });
-
-  it('positive', async () => {
+    routeModule = sdk.Route;
     jest
       .spyOn(require('../src/utils/poolUtils'), 'fetchAllPoolsApi')
       .mockResolvedValueOnce(ALL_POOL_DATA);
+  });
+
+  it('positive SUI/USDC', async () => {
     const tokenXType =
       '0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI';
     const tokenYType =
       '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC';
-    expect(await poolModule.fetchRoute(tokenXType, tokenYType, 2)).toBeDefined();
+    expect(await routeModule.fetchRoute(tokenXType, tokenYType, 2)).toBeDefined();
+  }, 30000);
+
+  it('positive SUI/USDC pass pools and tokens', async () => {
+    const pools = await sdk.Pool.getAllPools();
+    const tokens = await sdk.Pool.getAllTokens();
+    const tokenXType =
+      '0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI';
+    const tokenYType =
+      '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC';
+    expect(await routeModule.fetchRoute(tokenXType, tokenYType, 2, pools, tokens)).toBeDefined();
+  }, 30000);
+
+  it('negative SUI/USDC pass wrong tokens', async () => {
+    const pools = await sdk.Pool.getAllPools();
+    const tokens = await sdk.Pool.getAllTokens();
+    const tokenXType =
+      '0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI';
+    const tokenYType =
+      '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC';
+    const finallyTokens = tokens.filter((token) => token.coinType !== tokenXType);
+
+    await expect(
+      routeModule.fetchRoute(tokenXType, tokenYType, 2, pools, finallyTokens),
+    ).rejects.toThrow('No pools or source token found');
+  }, 30000);
+
+  it('positive SUI/USDC pass empty pools or tokens', async () => {
+    const pools = await sdk.Pool.getAllPools();
+    const tokens = await sdk.Pool.getAllTokens();
+    const tokenXType =
+      '0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI';
+    const tokenYType =
+      '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC';
+
+    expect(await routeModule.fetchRoute(tokenXType, tokenYType, 2, [], tokens)).toBeDefined();
+
+    expect(await routeModule.fetchRoute(tokenXType, tokenYType, 2, pools, [])).toBeDefined();
+  }, 30000);
+
+  it('positive STSUI/WAL', async () => {
+    const tokenXType =
+      '0xd1b72982e40348d069bb1ff701e634c117bb5f741f44dff91e472d3b01461e55::stsui::STSUI';
+    const tokenYType =
+      '0x356a26eb9e012a68958082340d4c4116e7f55615cf27affcff209cf0ae544f59::wal::WAL';
+    expect(await routeModule.fetchRoute(tokenXType, tokenYType, 2)).toBeDefined();
+  }, 30000);
+
+  it('negative', async () => {
+    const tokenXType = '0x5145494a5f5100e645e4b0aa950fa6b68f614e8c59e17bc5ded3495123a79178::ns::NS';
+    const tokenYType =
+      '0xaf8cd5edc19c4512f4259f0bee101a40d41ebed738ade5874359610ef8eeced5::coin::COIN';
+    expect(await routeModule.fetchRoute(tokenXType, tokenYType, 2)).toEqual(null);
   }, 30000);
 });

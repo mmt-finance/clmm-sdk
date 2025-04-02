@@ -49,6 +49,12 @@ export class RouteModule implements BaseModule {
       }));
 
     const pathResults: PathResult[] = await this.getRoutes(sourceToken, targetToken, pools);
+    console.log('pathResults:', pathResults);
+    console.log('pathResults length:', pathResults.length);
+    if (!pathResults) {
+      console.error('No paths found:', sourceToken, targetToken);
+      return null;
+    }
 
     const best = await this.devRunSwapAndChooseBestRoute(
       pathResults,
@@ -71,47 +77,23 @@ export class RouteModule implements BaseModule {
     const toVertex = vertexMap.get(targetToken);
     if (!fromVertex || !toVertex) return null;
 
-    if (sourceToken === targetToken) {
-    }
     const paths = Array.from(graph.findAllPath(fromVertex, toVertex));
-    console.log('Paths:');
-    paths.forEach((path, i) => {
-      const tokenList = path.map((v) => v.value);
-      console.log(`Path ${i + 1}: ${tokenList.join(' -> ')}`);
-    });
-    const getWeightSum = (path: GraphVertex[]): number => {
-      return path.slice(0, -1).reduce((sum, _, idx) => {
-        const current = path[idx];
-        const next = path[idx + 1];
-
-        let edge = current.edges.get(next.value);
-        if (!edge) {
-          edge = next.edges.get(current.value);
-        }
-
-        const weight = edge ? edge.weight : 0;
-        return sum + weight;
-      }, 0);
-    };
-
-    const sorted = [...paths].sort((a, b) => {
-      return getWeightSum(b) - getWeightSum(a);
-    });
-    console.log('sorted:', JSON.stringify(sorted));
-
-    const topPaths = sorted.slice(0, DRY_RUN_PATH_LEN);
 
     const pathResults: PathResult[] = [];
 
-    for (const path of topPaths) {
+    for (const path of paths) {
       const tokenNames = path.map((v) => (v.value.includes('#') ? v.value.split('#')[0] : v.value));
       const simplified = this.simplifyPath(tokenNames);
       const { poolIds, isXToY } = this.extractPoolInfo(path);
       pathResults.push({ tokens: simplified, pools: poolIds, isXToY });
     }
+    const sorted = this.sortPaths(pathResults).slice(0, DRY_RUN_PATH_LEN);
+    if (sorted.length === 0) {
+      console.warn('No valid paths found');
+      return null;
+    }
 
-    console.log('pathResults:', JSON.stringify(pathResults));
-    return pathResults;
+    return sorted;
   }
 
   private buildGraphFromPools(
@@ -120,12 +102,14 @@ export class RouteModule implements BaseModule {
     vertexMap: Map<string, GraphVertex>,
     tokenRepeatTracker: Map<string, number>,
   ) {
-    const getVertex = (key: string) => {
-      if (!vertexMap.has(key)) {
-        vertexMap.set(key, new GraphVertex(key));
-      }
-      return vertexMap.get(key)!;
-    };
+    const tokenSet = new Set<string>();
+    pools.forEach((pool) => {
+      tokenSet.add(pool.tokenXType);
+      tokenSet.add(pool.tokenYType);
+    });
+    tokenSet.forEach((token) => {
+      vertexMap.set(token, new GraphVertex(token));
+    });
 
     const fetchAvailableTokenKey = (token: string): string => {
       const count = tokenRepeatTracker.get(token) ?? 0;
@@ -136,17 +120,17 @@ export class RouteModule implements BaseModule {
 
     const addEdge = (from: string, to: string, pool: PoolTokenType, weight: number) => {
       let finalTo = to;
-      const fromVertex = getVertex(from);
-      let toVertex = getVertex(finalTo);
+      const fromVertex = vertexMap.get(from);
+      let toVertex = vertexMap.get(finalTo);
 
       if (graph.findEdge(fromVertex, toVertex)) {
         finalTo = fetchAvailableTokenKey(to);
-        const virtualVertex = getVertex(finalTo);
-        const realVertex = getVertex(to);
-        graph.addEdge(new GraphEdge(virtualVertex, realVertex, 0));
+        vertexMap.set(finalTo, new GraphVertex(finalTo));
+        const virtualVertex = vertexMap.get(finalTo);
+        graph.addEdge(new GraphEdge(virtualVertex, toVertex, 0));
       }
 
-      toVertex = getVertex(finalTo);
+      toVertex = vertexMap.get(finalTo);
       graph.addEdge(new GraphEdge(fromVertex, toVertex, weight));
 
       this.edgeToPool.set(`${from}->${finalTo}`, pool);
@@ -201,8 +185,16 @@ export class RouteModule implements BaseModule {
       }, 0);
 
     return [...paths].sort((a, b) => {
+      const lenA = a.tokens.length;
+      const lenB = b.tokens.length;
+
+      if (lenA !== lenB) {
+        return lenA - lenB;
+      }
+
       const weightA = getWeightSum(a.tokens);
       const weightB = getWeightSum(b.tokens);
+
       return weightB - weightA;
     });
   }
@@ -213,27 +205,33 @@ export class RouteModule implements BaseModule {
     sourceAmount: bigint,
     sourceDecimals: number,
   ) {
-    let bestPath: PathResult | null = null;
-    let maxOutput = BigInt(0);
-    for (const path of paths) {
-      let output = BigInt(0);
-
+    const tasks = paths.map(async (path) => {
       try {
         const tx = new Transaction();
         const sourceAmountIn = tx.pure.u64(Number(sourceAmount) * 10 ** sourceDecimals);
-        output = await this.dryRunSwap(tx, path, pools, sourceAmountIn);
+        const output = await this.dryRunSwap(tx, path, pools, sourceAmountIn);
+        return { path, output };
       } catch (err) {
         console.warn(`Dry run failed on path:`, path, err);
-        continue;
+        return null;
       }
+    });
+    const results = await Promise.all(tasks);
+    const validResults = results.filter(
+      (r): r is { path: PathResult; output: bigint } => r !== null,
+    );
 
-      if (output > maxOutput) {
-        maxOutput = output;
-        bestPath = path;
-      }
+    if (validResults.length === 0) {
+      console.warn('No valid swap paths found.');
+      return null;
     }
 
-    return bestPath;
+    const best = validResults.reduce(
+      (max, current) => (current.output > max.output ? current : max),
+      { path: null, output: BigInt(0) } as { path: PathResult | null; output: bigint },
+    );
+
+    return best.path;
   }
 
   private async dryRunSwap(
@@ -242,53 +240,62 @@ export class RouteModule implements BaseModule {
     pools: PoolTokenType[],
     sourceAmount: any,
   ) {
-    const swapDirectionMap = new Map<string, boolean>();
-    pathResult.pools.forEach((poolId, index) => {
-      const direction = pathResult.isXToY[index];
-      swapDirectionMap.set(poolId, direction);
-    });
-    let inputAmount = sourceAmount;
+    try {
+      const swapDirectionMap = new Map<string, boolean>();
+      pathResult.pools.forEach((poolId, index) => {
+        const direction = pathResult.isXToY[index];
+        swapDirectionMap.set(poolId, direction);
+      });
+      let inputAmount = sourceAmount;
 
-    const LowLimitPrice = BigInt('4295048017');
-    const HighLimitPrice = BigInt('79226673515401279992447579050');
+      const LowLimitPrice = BigInt('4295048017');
+      const HighLimitPrice = BigInt('79226673515401279992447579050');
 
-    for (const poolId of pathResult.pools) {
-      const pool = pools.find((p) => p.poolId === poolId)!;
-      const { tokenXType, tokenYType } = pool;
-      const isXtoY = swapDirectionMap.get(poolId);
+      for (const poolId of pathResult.pools) {
+        const pool = pools.find((p) => p.poolId === poolId)!;
+        const { tokenXType, tokenYType } = pool;
+        const isXtoY = swapDirectionMap.get(poolId);
 
-      const swapResult = tx.moveCall({
-        target: `${this.sdk.PackageId}::trade::compute_swap_result`,
-        typeArguments: [tokenXType, tokenYType],
-        arguments: [
-          tx.object(poolId),
-          tx.pure.bool(isXtoY),
-          tx.pure.bool(true),
-          tx.pure.u128(isXtoY ? LowLimitPrice : HighLimitPrice),
-          inputAmount,
-        ],
+        const swapResult = tx.moveCall({
+          target: `${this.sdk.PackageId}::trade::compute_swap_result`,
+          typeArguments: [tokenXType, tokenYType],
+          arguments: [
+            tx.object(poolId),
+            tx.pure.bool(isXtoY),
+            tx.pure.bool(true),
+            tx.pure.u128(isXtoY ? LowLimitPrice : HighLimitPrice),
+            inputAmount,
+          ],
+        });
+
+        inputAmount = tx.moveCall({
+          target: `${this.sdk.PackageId}::trade::get_state_amount_calculated`,
+          arguments: [swapResult],
+        });
+      }
+
+      const res = await this.sdk.rpcClient.devInspectTransactionBlock({
+        transactionBlock: tx,
+        sender: normalizeSuiAddress('0x0'),
+        additionalArgs: { showRawTxnDataAndEffects: true },
       });
 
-      inputAmount = tx.moveCall({
-        target: `${this.sdk.PackageId}::trade::get_state_amount_calculated`,
-        arguments: [swapResult],
-      });
-    }
+      if (res.error || res.effects?.status.status !== 'success') {
+        console.error(`Dry run failed: ${res.error || 'Unknown failure'}`);
+        return 0n;
+      }
 
-    const res = await this.sdk.rpcClient.devInspectTransactionBlock({
-      transactionBlock: tx,
-      sender: normalizeSuiAddress('0x0'),
-      additionalArgs: { showRawTxnDataAndEffects: true },
-    });
+      const lastIndex = 2 * (pathResult.pools.length - 1) + 1;
+      const amountOut = res.results?.[lastIndex]?.returnValues?.[0]?.[0];
 
-    const lastIndex = 2 * (pathResult.pools.length - 1) + 1;
-    const amountOut = res.results?.[lastIndex]?.returnValues?.[0]?.[0];
-
-    if (amountOut) {
+      if (!amountOut) {
+        return 0n;
+      }
       const amountOutParsed = bcs.u64().parse(new Uint8Array(amountOut));
       return BigInt(amountOutParsed);
+    } catch (err) {
+      console.error('Error in dry run swap:', err);
+      return 0n;
     }
-
-    return 0n;
   }
 }
