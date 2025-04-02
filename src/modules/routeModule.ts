@@ -72,12 +72,17 @@ export class RouteModule implements BaseModule {
     // if (!fromNodes.length || !toNodes.length) return null;
 
     const weightFn = (edge: { v: string; w: string }) => {
+      console.log(`${edge.v}` + ' ' + `${edge.w}` + ' ' + `${graph.edge(edge.v, edge.w)}`);
       return graph.edge(edge.v, edge.w) || Infinity;
     };
 
     console.log(graph.edges());
     console.log(graph.nodes());
-    console.log(graph.outEdges(sourceToken));
+    console.log(graph.inEdges('C'));
+    console.log(graph.outEdges('C'));
+    console.log(graph.outEdges('B'));
+    console.log(graph.edge('B', 'C'));
+    console.log(graph.edge('C', 'B'));
 
     const paths = yen.ksp(graph, sourceToken, targetToken, 10, weightFn);
 
@@ -87,18 +92,18 @@ export class RouteModule implements BaseModule {
       console.log(path);
     }
 
-    for (const path of paths) {
-      console.log('path:', path);
-      const tokenNames = path.nodes.map((v) =>
-        v.value.includes('#') ? v.value.split('#')[0] : v.value,
-      );
-
-      const simplified = this.simplifyPath(tokenNames);
-
-      const { poolIds, isXToY } = this.extractPoolInfo(path);
-
-      pathResults.push({ tokens: simplified, pools: poolIds, isXToY });
-    }
+    // for (const path of paths) {
+    //   console.log('path:', path);
+    //   const tokenNames = path.nodes.map((v) =>
+    //     v.value.includes('#') ? v.value.split('#')[0] : v.value,
+    //   );
+    //
+    //   const simplified = this.simplifyPath(tokenNames);
+    //
+    //   const { poolIds, isXToY } = this.extractPoolInfo(path);
+    //
+    //   pathResults.push({ tokens: simplified, pools: poolIds, isXToY });
+    // }
 
     return await this.devRunSwapAndChooseBestRoute(
       pathResults,
