@@ -4,8 +4,7 @@ import { normalizeSuiAddress } from '@mysten/sui/utils';
 import { bcs } from '@mysten/sui/bcs';
 import { BaseModule } from '../interfaces/BaseModule';
 import { MmtSDK } from '../sdk';
-import { Graph } from 'graphlib';
-import yen from 'k-shortest-path';
+import { Graph, GraphVertex, GraphEdge } from '@syntsugar/cc-graph';
 import { DRY_RUN_PATH_LEN } from '../utils/constants';
 
 export class RouteModule implements BaseModule {
@@ -49,83 +48,85 @@ export class RouteModule implements BaseModule {
         tvl: x.tvl,
       }));
 
-    const best = await this.getRoutes(sourceToken, targetToken, amount, sourceTokenSchema, pools);
-    if (!best) throw new Error('No path found');
-    return best.pools;
-  }
+    const pathResults: PathResult[] = await this.getRoutes(sourceToken, targetToken, pools);
 
-  private async getRoutes(
-    sourceToken: string,
-    targetToken: string,
-    amount: bigint,
-    sourceTokenSchema: TokenSchema,
-    pools: PoolTokenType[],
-  ) {
-    const graph = new Graph({ directed: false });
-    const tokenRepeatTracker = new Map<string, number>();
-
-    this.buildGraphFromPools(pools, graph, tokenRepeatTracker);
-
-    // const allNodes = graph.nodes();
-    // const fromNodes = allNodes.filter((n) => n.startsWith(sourceToken));
-    // const toNodes = allNodes.filter((n) => n.startsWith(targetToken));
-    // if (!fromNodes.length || !toNodes.length) return null;
-
-    const weightFn = (edge: { v: string; w: string }) => {
-      console.log(`${edge.v}` + ' ' + `${edge.w}` + ' ' + `${graph.edge(edge.v, edge.w)}`);
-      return graph.edge(edge.v, edge.w) || Infinity;
-    };
-
-    console.log(graph.edges());
-    console.log(graph.nodes());
-    console.log(graph.inEdges('C'));
-    console.log(graph.outEdges('C'));
-    console.log(graph.outEdges('B'));
-    console.log(graph.edge('B', 'C'));
-    console.log(graph.edge('C', 'B'));
-
-    const paths = yen.ksp(graph, sourceToken, targetToken, 10, weightFn);
-
-    const pathResults: PathResult[] = [];
-
-    for (const path of paths) {
-      console.log(path);
-    }
-
-    // for (const path of paths) {
-    //   console.log('path:', path);
-    //   const tokenNames = path.nodes.map((v) =>
-    //     v.value.includes('#') ? v.value.split('#')[0] : v.value,
-    //   );
-    //
-    //   const simplified = this.simplifyPath(tokenNames);
-    //
-    //   const { poolIds, isXToY } = this.extractPoolInfo(path);
-    //
-    //   pathResults.push({ tokens: simplified, pools: poolIds, isXToY });
-    // }
-
-    return await this.devRunSwapAndChooseBestRoute(
+    const best = await this.devRunSwapAndChooseBestRoute(
       pathResults,
       pools,
       amount,
       sourceTokenSchema.decimals,
     );
+    if (!best) throw new Error('No path found');
+    return best.pools;
+  }
+
+  private async getRoutes(sourceToken: string, targetToken: string, pools: PoolTokenType[]) {
+    const graph = new Graph(false);
+    const vertexMap = new Map<string, GraphVertex>();
+    const tokenRepeatTracker = new Map<string, number>();
+
+    this.buildGraphFromPools(pools, graph, vertexMap, tokenRepeatTracker);
+
+    const fromVertex = vertexMap.get(sourceToken);
+    const toVertex = vertexMap.get(targetToken);
+    if (!fromVertex || !toVertex) return null;
+
+    if (sourceToken === targetToken) {
+    }
+    const paths = Array.from(graph.findAllPath(fromVertex, toVertex));
+    console.log('Paths:');
+    paths.forEach((path, i) => {
+      const tokenList = path.map((v) => v.value);
+      console.log(`Path ${i + 1}: ${tokenList.join(' -> ')}`);
+    });
+    const getWeightSum = (path: GraphVertex[]): number => {
+      return path.slice(0, -1).reduce((sum, _, idx) => {
+        const current = path[idx];
+        const next = path[idx + 1];
+
+        let edge = current.edges.get(next.value);
+        if (!edge) {
+          edge = next.edges.get(current.value);
+        }
+
+        const weight = edge ? edge.weight : 0;
+        return sum + weight;
+      }, 0);
+    };
+
+    const sorted = [...paths].sort((a, b) => {
+      return getWeightSum(b) - getWeightSum(a);
+    });
+    console.log('sorted:', JSON.stringify(sorted));
+
+    const topPaths = sorted.slice(0, DRY_RUN_PATH_LEN);
+
+    const pathResults: PathResult[] = [];
+
+    for (const path of topPaths) {
+      const tokenNames = path.map((v) => (v.value.includes('#') ? v.value.split('#')[0] : v.value));
+      const simplified = this.simplifyPath(tokenNames);
+      const { poolIds, isXToY } = this.extractPoolInfo(path);
+      pathResults.push({ tokens: simplified, pools: poolIds, isXToY });
+    }
+
+    console.log('pathResults:', JSON.stringify(pathResults));
+    return pathResults;
   }
 
   private buildGraphFromPools(
     pools: PoolTokenType[],
     graph: Graph,
+    vertexMap: Map<string, GraphVertex>,
     tokenRepeatTracker: Map<string, number>,
   ) {
-    const tokenSet = new Set<string>();
-    for (const pool of pools) {
-      tokenSet.add(pool.tokenXType);
-      tokenSet.add(pool.tokenYType);
-    }
-    tokenSet.forEach((token) => {
-      graph.setNode(token);
-    });
+    const getVertex = (key: string) => {
+      if (!vertexMap.has(key)) {
+        vertexMap.set(key, new GraphVertex(key));
+      }
+      return vertexMap.get(key)!;
+    };
+
     const fetchAvailableTokenKey = (token: string): string => {
       const count = tokenRepeatTracker.get(token) ?? 0;
       const nextCount = count + 1;
@@ -135,13 +136,18 @@ export class RouteModule implements BaseModule {
 
     const addEdge = (from: string, to: string, pool: PoolTokenType, weight: number) => {
       let finalTo = to;
+      const fromVertex = getVertex(from);
+      let toVertex = getVertex(finalTo);
 
-      if (graph.hasEdge(from, to)) {
+      if (graph.findEdge(fromVertex, toVertex)) {
         finalTo = fetchAvailableTokenKey(to);
-        graph.setNode(finalTo);
-        graph.setEdge(finalTo, to, 0);
+        const virtualVertex = getVertex(finalTo);
+        const realVertex = getVertex(to);
+        graph.addEdge(new GraphEdge(virtualVertex, realVertex, 0));
       }
-      graph.setEdge(from, finalTo, weight);
+
+      toVertex = getVertex(finalTo);
+      graph.addEdge(new GraphEdge(fromVertex, toVertex, weight));
 
       this.edgeToPool.set(`${from}->${finalTo}`, pool);
       this.poolWeightMap.set(`${from}->${finalTo}`, weight);
@@ -154,20 +160,18 @@ export class RouteModule implements BaseModule {
   }
 
   private simplifyPath(tokenNames: string[]): string[] {
-    const seen = new Set<string>();
     const simplified: string[] = [];
 
-    for (const token of tokenNames) {
-      if (!seen.has(token)) {
-        seen.add(token);
-        simplified.push(token);
+    for (let i = 0; i < tokenNames.length; i++) {
+      if (i === 0 || tokenNames[i] !== tokenNames[i - 1]) {
+        simplified.push(tokenNames[i]);
       }
     }
 
     return simplified;
   }
 
-  private extractPoolInfo(path): { poolIds: string[]; isXToY: boolean[] } {
+  private extractPoolInfo(path: GraphVertex[]): { poolIds: string[]; isXToY: boolean[] } {
     const poolIds: string[] = [];
     const isXToY: boolean[] = [];
 
@@ -197,10 +201,9 @@ export class RouteModule implements BaseModule {
       }, 0);
 
     return [...paths].sort((a, b) => {
-      if (a.tokens.length !== b.tokens.length) {
-        return a.tokens.length - b.tokens.length;
-      }
-      return getWeightSum(a.tokens) - getWeightSum(b.tokens);
+      const weightA = getWeightSum(a.tokens);
+      const weightB = getWeightSum(b.tokens);
+      return weightB - weightA;
     });
   }
 
@@ -215,7 +218,6 @@ export class RouteModule implements BaseModule {
     for (const path of paths) {
       let output = BigInt(0);
 
-      // todo promiseAll
       try {
         const tx = new Transaction();
         const sourceAmountIn = tx.pure.u64(Number(sourceAmount) * 10 ** sourceDecimals);
@@ -278,7 +280,6 @@ export class RouteModule implements BaseModule {
       sender: normalizeSuiAddress('0x0'),
       additionalArgs: { showRawTxnDataAndEffects: true },
     });
-    // todo isSuccess
 
     const lastIndex = 2 * (pathResult.pools.length - 1) + 1;
     const amountOut = res.results?.[lastIndex]?.returnValues?.[0]?.[0];
