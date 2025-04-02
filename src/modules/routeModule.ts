@@ -63,9 +63,8 @@ export class RouteModule implements BaseModule {
     const graph = new Graph(false);
     const vertexMap = new Map<string, GraphVertex>();
     const tokenRepeatTracker = new Map<string, number>();
-    const tokenXToYRepeatTracker = new Map<string, number>();
 
-    this.buildGraphFromPools(pools, graph, vertexMap, tokenRepeatTracker, tokenXToYRepeatTracker);
+    this.buildGraphFromPools(pools, graph, vertexMap, tokenRepeatTracker);
 
     const fromVertex = vertexMap.get(sourceToken);
     const toVertex = vertexMap.get(targetToken);
@@ -78,8 +77,7 @@ export class RouteModule implements BaseModule {
     for (const path of paths) {
       const tokenNames = path.map((v) => (v.value.includes('#') ? v.value.split('#')[0] : v.value));
 
-      const { valid, simplified } = this.isPathValid(tokenNames, maxHops);
-      if (!valid) continue;
+      const { simplified } = this.isPathValid(tokenNames, maxHops);
 
       const { poolIds, isXToY } = this.extractPoolInfo(path);
       if (poolIds.length !== path.length - 1) continue;
@@ -103,7 +101,6 @@ export class RouteModule implements BaseModule {
     graph: Graph,
     vertexMap: Map<string, GraphVertex>,
     tokenRepeatTracker: Map<string, number>,
-    tokenXToYRepeatTracker: Map<string, number>,
   ) {
     const getVertex = (key: string) => {
       if (!vertexMap.has(key)) {
@@ -120,15 +117,6 @@ export class RouteModule implements BaseModule {
     };
 
     const addEdge = (from: string, to: string, pool: PoolTokenType, weight: number) => {
-      const key = `${from}-${to}`;
-      const repeatCount = tokenXToYRepeatTracker.get(key) ?? 0;
-      const toCount = tokenRepeatTracker.get(to) ?? 0;
-
-      if (repeatCount <= toCount && repeatCount !== 0) {
-        tokenXToYRepeatTracker.set(key, repeatCount + 1);
-        return;
-      }
-
       let finalTo = to;
       const fromVertex = getVertex(from);
       let toVertex = getVertex(finalTo);
@@ -143,7 +131,6 @@ export class RouteModule implements BaseModule {
       toVertex = getVertex(finalTo);
       graph.addEdge(new GraphEdge(fromVertex, toVertex, weight));
 
-      tokenXToYRepeatTracker.set(key, repeatCount + 1);
       this.edgeToPool.set(`${from}->${finalTo}`, pool);
       this.poolWeightMap.set(`${from}->${finalTo}`, weight);
     };
@@ -154,28 +141,20 @@ export class RouteModule implements BaseModule {
     }
   }
 
-  private isPathValid(
-    tokenNames: string[],
-    maxHops: number,
-  ): { valid: boolean; simplified: string[] } {
-    const group = new Map<string, number>();
+  private isPathValid(tokenNames: string[], maxHops: number): { simplified: string[] } {
     const seen = new Set<string>();
     const simplified: string[] = [];
 
     for (const token of tokenNames) {
-      const count = group.get(token) || 0;
-      group.set(token, count + 1);
-      if (count + 1 > 2) return { valid: false, simplified: [] };
-
       if (!seen.has(token)) {
         seen.add(token);
         simplified.push(token);
       }
     }
 
-    if (simplified.length > maxHops + 1) return { valid: false, simplified: [] };
+    if (simplified.length > maxHops + 1) return { simplified: [] };
 
-    return { valid: true, simplified };
+    return { simplified };
   }
 
   private extractPoolInfo(path: GraphVertex[]): { poolIds: string[]; isXToY: boolean[] } {
