@@ -63,7 +63,7 @@
     ]
   },
   "dependencies": {
-    "graphlib": "^2.1.8",
-    "k-shortest-path": "^0.0.5"
+    "@syntsugar/cc-graph": "^0.1.1",
+    "tslib": "^2.8.1"
   }
 }
