@@ -4,7 +4,9 @@ import { normalizeSuiAddress } from '@mysten/sui/utils';
 import { bcs } from '@mysten/sui/bcs';
 import { BaseModule } from '../interfaces/BaseModule';
 import { MmtSDK } from '../sdk';
-import { Graph, GraphVertex, GraphEdge } from '@syntsugar/cc-graph';
+import { Graph } from 'graphlib';
+import yen from 'k-shortest-path';
+import { DRY_RUN_PATH_LEN } from '../utils/constants';
 
 export class RouteModule implements BaseModule {
   protected _sdk: MmtSDK;
@@ -58,38 +60,48 @@ export class RouteModule implements BaseModule {
     amount: bigint,
     sourceTokenSchema: TokenSchema,
     pools: PoolTokenType[],
-    maxHops?: 4,
   ) {
-    const graph = new Graph(false);
-    const vertexMap = new Map<string, GraphVertex>();
+    const graph = new Graph({ directed: false });
     const tokenRepeatTracker = new Map<string, number>();
 
-    this.buildGraphFromPools(pools, graph, vertexMap, tokenRepeatTracker);
+    this.buildGraphFromPools(pools, graph, tokenRepeatTracker);
 
-    const fromVertex = vertexMap.get(sourceToken);
-    const toVertex = vertexMap.get(targetToken);
-    if (!fromVertex || !toVertex) return null;
+    // const allNodes = graph.nodes();
+    // const fromNodes = allNodes.filter((n) => n.startsWith(sourceToken));
+    // const toNodes = allNodes.filter((n) => n.startsWith(targetToken));
+    // if (!fromNodes.length || !toNodes.length) return null;
 
-    const paths = Array.from(graph.findAllPath(fromVertex, toVertex));
+    const weightFn = (edge: { v: string; w: string }) => {
+      return graph.edge(edge.v, edge.w) || Infinity;
+    };
+
+    console.log(graph.edges());
+    console.log(graph.nodes());
+    console.log(graph.outEdges(sourceToken));
+
+    const paths = yen.ksp(graph, sourceToken, targetToken, 10, weightFn);
 
     const pathResults: PathResult[] = [];
 
     for (const path of paths) {
-      const tokenNames = path.map((v) => (v.value.includes('#') ? v.value.split('#')[0] : v.value));
+      console.log(path);
+    }
 
-      const { simplified } = this.isPathValid(tokenNames, maxHops);
+    for (const path of paths) {
+      console.log('path:', path);
+      const tokenNames = path.nodes.map((v) =>
+        v.value.includes('#') ? v.value.split('#')[0] : v.value,
+      );
+
+      const simplified = this.simplifyPath(tokenNames);
 
       const { poolIds, isXToY } = this.extractPoolInfo(path);
-      if (poolIds.length !== path.length - 1) continue;
 
       pathResults.push({ tokens: simplified, pools: poolIds, isXToY });
     }
 
-    const sorted = this.sortPaths(pathResults);
-    const top10 = sorted.slice(0, 10);
-
     return await this.devRunSwapAndChooseBestRoute(
-      top10,
+      pathResults,
       pools,
       amount,
       sourceTokenSchema.decimals,
@@ -99,17 +111,17 @@ export class RouteModule implements BaseModule {
   private buildGraphFromPools(
     pools: PoolTokenType[],
     graph: Graph,
-    vertexMap: Map<string, GraphVertex>,
     tokenRepeatTracker: Map<string, number>,
   ) {
-    const getVertex = (key: string) => {
-      if (!vertexMap.has(key)) {
-        vertexMap.set(key, new GraphVertex(key));
-      }
-      return vertexMap.get(key)!;
-    };
-
-    const getAvailableTokenKey = (token: string): string => {
+    const tokenSet = new Set<string>();
+    for (const pool of pools) {
+      tokenSet.add(pool.tokenXType);
+      tokenSet.add(pool.tokenYType);
+    }
+    tokenSet.forEach((token) => {
+      graph.setNode(token);
+    });
+    const fetchAvailableTokenKey = (token: string): string => {
       const count = tokenRepeatTracker.get(token) ?? 0;
       const nextCount = count + 1;
       tokenRepeatTracker.set(token, nextCount);
@@ -118,18 +130,13 @@ export class RouteModule implements BaseModule {
 
     const addEdge = (from: string, to: string, pool: PoolTokenType, weight: number) => {
       let finalTo = to;
-      const fromVertex = getVertex(from);
-      let toVertex = getVertex(finalTo);
 
-      if (graph.findEdge(fromVertex, toVertex)) {
-        finalTo = getAvailableTokenKey(to);
-        const virtualVertex = getVertex(finalTo);
-        const realVertex = getVertex(to);
-        graph.addEdge(new GraphEdge(virtualVertex, realVertex, 0));
+      if (graph.hasEdge(from, to)) {
+        finalTo = fetchAvailableTokenKey(to);
+        graph.setNode(finalTo);
+        graph.setEdge(finalTo, to, 0);
       }
-
-      toVertex = getVertex(finalTo);
-      graph.addEdge(new GraphEdge(fromVertex, toVertex, weight));
+      graph.setEdge(from, finalTo, weight);
 
       this.edgeToPool.set(`${from}->${finalTo}`, pool);
       this.poolWeightMap.set(`${from}->${finalTo}`, weight);
@@ -141,7 +148,7 @@ export class RouteModule implements BaseModule {
     }
   }
 
-  private isPathValid(tokenNames: string[], maxHops: number): { simplified: string[] } {
+  private simplifyPath(tokenNames: string[]): string[] {
     const seen = new Set<string>();
     const simplified: string[] = [];
 
@@ -152,12 +159,10 @@ export class RouteModule implements BaseModule {
       }
     }
 
-    if (simplified.length > maxHops + 1) return { simplified: [] };
-
-    return { simplified };
+    return simplified;
   }
 
-  private extractPoolInfo(path: GraphVertex[]): { poolIds: string[]; isXToY: boolean[] } {
+  private extractPoolInfo(path): { poolIds: string[]; isXToY: boolean[] } {
     const poolIds: string[] = [];
     const isXToY: boolean[] = [];
 
@@ -205,6 +210,7 @@ export class RouteModule implements BaseModule {
     for (const path of paths) {
       let output = BigInt(0);
 
+      // todo promiseAll
       try {
         const tx = new Transaction();
         const sourceAmountIn = tx.pure.u64(Number(sourceAmount) * 10 ** sourceDecimals);
@@ -267,6 +273,7 @@ export class RouteModule implements BaseModule {
       sender: normalizeSuiAddress('0x0'),
       additionalArgs: { showRawTxnDataAndEffects: true },
     });
+    // todo isSuccess
 
     const lastIndex = 2 * (pathResult.pools.length - 1) + 1;
     const amountOut = res.results?.[lastIndex]?.returnValues?.[0]?.[0];
