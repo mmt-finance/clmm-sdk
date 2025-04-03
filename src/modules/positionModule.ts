@@ -189,7 +189,6 @@ export class PositionModule implements BaseModule {
         };
       });
     } catch (e) {
-      console.error('Error in getUserPositionUsdValue:', e);
       throw e;
     }
   }
