@@ -147,50 +147,46 @@ export class PositionModule implements BaseModule {
     pools: ExtendedPool[],
     tokens: TokenSchema[],
   ) {
-    try {
-      const objects = await fetchUserObjectsByPkg(
-        this.sdk.rpcClient,
-        this.sdk.contractConst.publishedAt,
-        address,
+    const objects = await fetchUserObjectsByPkg(
+      this.sdk.rpcClient,
+      this.sdk.contractConst.publishedAt,
+      address,
+    );
+    const positions = objects.filter(
+      (obj: any) => obj.type === `${this.sdk.PackageId}::position::Position`,
+    );
+    const tokenPriceMap = new Map(tokens.map((token) => [token.coinType, Number(token.price)]));
+    return positions.map((position: any) => {
+      const positionData = position.fields;
+      if (!positionData) return null;
+
+      const pool = pools.find((p) => p.poolId === positionData.pool_id);
+      if (!pool) return null;
+
+      const liquidity = new BN(positionData.liquidity ?? 0);
+      const upperTick = Number(positionData.tick_upper_index.fields.bits ?? 0);
+      const lowerTick = Number(positionData.tick_lower_index.fields.bits ?? 0);
+      const upperTickSqrtPrice = TickMath.tickIndexToSqrtPriceX64(convertI32ToSigned(upperTick));
+      const lowerTickSqrtPrice = TickMath.tickIndexToSqrtPriceX64(convertI32ToSigned(lowerTick));
+
+      const { coinA, coinB } = getCoinAmountFromLiquidity(
+        liquidity,
+        new BN(pool.currentSqrtPrice.toString()),
+        lowerTickSqrtPrice,
+        upperTickSqrtPrice,
+        false,
       );
-      const positions = objects.filter(
-        (obj: any) => obj.type === `${this.sdk.PackageId}::position::Position`,
-      );
-      const tokenPriceMap = new Map(tokens.map((token) => [token.coinType, Number(token.price)]));
-      return positions.map((position: any) => {
-        const positionData = position.fields;
-        if (!positionData) return null;
 
-        const pool = pools.find((p) => p.poolId === positionData.pool_id);
-        if (!pool) return null;
+      const calculateUsdValue = (amount: number, coinType: string) =>
+        (amount / 10 ** pool[coinType].decimals) * tokenPriceMap.get(pool[coinType].coinType);
 
-        const liquidity = new BN(positionData.liquidity ?? 0);
-        const upperTick = Number(positionData.tick_upper_index.fields.bits ?? 0);
-        const lowerTick = Number(positionData.tick_lower_index.fields.bits ?? 0);
-        const upperTickSqrtPrice = TickMath.tickIndexToSqrtPriceX64(convertI32ToSigned(upperTick));
-        const lowerTickSqrtPrice = TickMath.tickIndexToSqrtPriceX64(convertI32ToSigned(lowerTick));
-
-        const { coinA, coinB } = getCoinAmountFromLiquidity(
-          liquidity,
-          new BN(pool.currentSqrtPrice.toString()),
-          lowerTickSqrtPrice,
-          upperTickSqrtPrice,
-          false,
-        );
-
-        const calculateUsdValue = (amount: number, coinType: string) =>
-          (amount / 10 ** pool[coinType].decimals) * tokenPriceMap.get(pool[coinType].coinType);
-
-        return {
-          objectId: positionData.id.id,
-          poolId: positionData.pool_id,
-          amount:
-            calculateUsdValue(Number(coinA), 'tokenX') + calculateUsdValue(Number(coinB), 'tokenY'),
-        };
-      });
-    } catch (e) {
-      throw e;
-    }
+      return {
+        objectId: positionData.id.id,
+        poolId: positionData.pool_id,
+        amount:
+          calculateUsdValue(Number(coinA), 'tokenX') + calculateUsdValue(Number(coinB), 'tokenY'),
+      };
+    });
   }
 
   public async getAllUserPositions(address: string) {
