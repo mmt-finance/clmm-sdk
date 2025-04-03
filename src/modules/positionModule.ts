@@ -142,7 +142,7 @@ export class PositionModule implements BaseModule {
 
   // ----------getter functions---------------
 
-  public async getUserPositionUsdValue(
+  public async getUserPositionsUsdValue(
     address: string,
     pools: ExtendedPool[],
     tokens: TokenSchema[],
