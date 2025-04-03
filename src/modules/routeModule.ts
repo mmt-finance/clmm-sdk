@@ -9,8 +9,6 @@ import { DRY_RUN_PATH_LEN } from '../utils/constants';
 
 export class RouteModule implements BaseModule {
   protected _sdk: MmtSDK;
-  private edgeToPool = new Map<string, PoolTokenType>();
-  private poolWeightMap = new Map<string, number>();
 
   constructor(sdk: MmtSDK) {
     this._sdk = sdk;
@@ -40,15 +38,15 @@ export class RouteModule implements BaseModule {
     }
 
     const pools: PoolTokenType[] = extendedPools
-      .filter((x) => Number(x.tvl) > 0)
-      .map((x) => ({
-        poolId: x.poolId,
-        tokenXType: x.tokenXType,
-        tokenYType: x.tokenYType,
-        tvl: x.tvl,
+      .filter((pool) => Number(pool.tvl) > 0)
+      .map((pool) => ({
+        poolId: pool.poolId,
+        tokenXType: pool.tokenXType,
+        tokenYType: pool.tokenYType,
+        tvl: pool.tvl,
       }));
 
-    const pathResults: PathResult[] = await this.getRoutes(sourceToken, targetToken, pools);
+    const pathResults = await this.getRoutes(sourceToken, targetToken, pools);
     if (!pathResults) {
       console.error('No paths found:', sourceToken, targetToken);
       return null;
@@ -68,8 +66,17 @@ export class RouteModule implements BaseModule {
     const graph = new Graph(false);
     const vertexMap = new Map<string, GraphVertex>();
     const tokenRepeatTracker = new Map<string, number>();
+    let edgeToPool = new Map<string, PoolTokenType>();
+    let poolWeightMap = new Map<string, number>();
 
-    this.buildGraphFromPools(pools, graph, vertexMap, tokenRepeatTracker);
+    this.buildGraphFromPools(
+      pools,
+      graph,
+      vertexMap,
+      tokenRepeatTracker,
+      edgeToPool,
+      poolWeightMap,
+    );
 
     const fromVertex = vertexMap.get(sourceToken);
     const toVertex = vertexMap.get(targetToken);
@@ -82,10 +89,11 @@ export class RouteModule implements BaseModule {
     for (const path of paths) {
       const tokenNames = path.map((v) => (v.value.includes('#') ? v.value.split('#')[0] : v.value));
       const simplified = this.simplifyPath(tokenNames);
-      const { poolIds, isXToY } = this.extractPoolInfo(path);
+      const { poolIds, isXToY } = this.extractPoolInfo(path, edgeToPool);
       pathResults.push({ tokens: simplified, pools: poolIds, isXToY });
     }
-    const sorted = this.sortPaths(pathResults).slice(0, DRY_RUN_PATH_LEN);
+
+    const sorted = this.sortPaths(pathResults, poolWeightMap).slice(0, DRY_RUN_PATH_LEN);
     if (sorted.length === 0) {
       console.warn('No valid paths found');
       return null;
@@ -99,6 +107,8 @@ export class RouteModule implements BaseModule {
     graph: Graph,
     vertexMap: Map<string, GraphVertex>,
     tokenRepeatTracker: Map<string, number>,
+    edgeToPool: Map<string, PoolTokenType>,
+    poolWeightMap: Map<string, number>,
   ) {
     const tokenSet = new Set<string>();
     pools.forEach((pool) => {
@@ -131,8 +141,8 @@ export class RouteModule implements BaseModule {
       toVertex = vertexMap.get(finalTo);
       graph.addEdge(new GraphEdge(fromVertex, toVertex, weight));
 
-      this.edgeToPool.set(`${from}->${finalTo}`, pool);
-      this.poolWeightMap.set(`${from}->${finalTo}`, weight);
+      edgeToPool.set(`${from}->${finalTo}`, pool);
+      poolWeightMap.set(`${from}->${finalTo}`, weight);
     };
 
     for (const pool of pools) {
@@ -153,7 +163,10 @@ export class RouteModule implements BaseModule {
     return simplified;
   }
 
-  private extractPoolInfo(path: GraphVertex[]): { poolIds: string[]; isXToY: boolean[] } {
+  private extractPoolInfo(
+    path: GraphVertex[],
+    edgeToPool: Map<string, PoolTokenType>,
+  ): { poolIds: string[]; isXToY: boolean[] } {
     const poolIds: string[] = [];
     const isXToY: boolean[] = [];
 
@@ -163,7 +176,7 @@ export class RouteModule implements BaseModule {
       const edgeKey = `${from}->${to}`;
       const edgeKeyRev = `${to}->${from}`;
 
-      const pool = this.edgeToPool.get(edgeKey) ?? this.edgeToPool.get(edgeKeyRev);
+      const pool = edgeToPool.get(edgeKey) ?? edgeToPool.get(edgeKeyRev);
       if (!pool) continue;
 
       poolIds.push(pool.poolId);
@@ -173,12 +186,12 @@ export class RouteModule implements BaseModule {
     return { poolIds, isXToY };
   }
 
-  private sortPaths(paths: PathResult[]): PathResult[] {
+  private sortPaths(paths: PathResult[], poolWeightMap: Map<string, number>): PathResult[] {
     const getWeightSum = (tokens: string[]) =>
       tokens.slice(0, -1).reduce((sum, _, idx) => {
         const key1 = `${tokens[idx]}->${tokens[idx + 1]}`;
         const key2 = `${tokens[idx + 1]}->${tokens[idx]}`;
-        const weight = this.poolWeightMap.get(key1) ?? this.poolWeightMap.get(key2) ?? 0;
+        const weight = poolWeightMap.get(key1) ?? poolWeightMap.get(key2) ?? 0;
         return sum + weight;
       }, 0);
 

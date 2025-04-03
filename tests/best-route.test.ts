@@ -63,6 +63,14 @@ describe('RouteModule', () => {
     expect(await routeModule.fetchRoute(tokenXType, tokenYType, 2, pools, [])).toBeDefined();
   }, 30000);
 
+  it('positive ALPHA/WAL', async () => {
+    const tokenXType =
+      '0xfe3afec26c59e874f3c1d60b8203cb3852d2bb2aa415df9548b8d688e6683f93::alpha::ALPHA';
+    const tokenYType =
+      '0x356a26eb9e012a68958082340d4c4116e7f55615cf27affcff209cf0ae544f59::wal::WAL';
+    expect(await routeModule.fetchRoute(tokenXType, tokenYType, 2)).toBeDefined();
+  }, 30000);
+
   it('positive STSUI/WAL', async () => {
     const tokenXType =
       '0xd1b72982e40348d069bb1ff701e634c117bb5f741f44dff91e472d3b01461e55::stsui::STSUI';
