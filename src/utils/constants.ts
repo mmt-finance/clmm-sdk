@@ -24,3 +24,5 @@ export const TICK_ARRAY_SIZE = 64;
 export const MIN_SQRT_PRICE = '4295048016';
 
 export const FEE_RATE_DENOMINATOR = new BN(1_000_000);
+
+export const DRY_RUN_PATH_LEN = 10;
