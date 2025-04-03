@@ -49,8 +49,6 @@ export class RouteModule implements BaseModule {
       }));
 
     const pathResults: PathResult[] = await this.getRoutes(sourceToken, targetToken, pools);
-    console.log('pathResults:', pathResults);
-    console.log('pathResults length:', pathResults.length);
     if (!pathResults) {
       console.error('No paths found:', sourceToken, targetToken);
       return null;
