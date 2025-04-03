@@ -11,6 +11,7 @@ import {
   Rewarder,
   TokenSchema,
   ExtendedPoolWithApr,
+  PoolTokenType,
 } from '../types';
 import { MmtSDK } from '../sdk';
 import { BaseModule } from '../interfaces/BaseModule';

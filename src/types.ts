@@ -169,4 +169,19 @@ export interface ClmmConsts {
   versionId: string;
 }
 
+export interface PoolTokenType {
+  tokenXType: string;
+  tokenYType: string;
+  poolId: string;
+  tvl: string;
+}
+
+export interface PathResult {
+  tokens: string[];
+  pools: string[];
+  isXToY?: boolean[];
+}
+
+export type Graph = Map<string, PoolTokenType[]>;
+
 export type SuiAddress = string;
