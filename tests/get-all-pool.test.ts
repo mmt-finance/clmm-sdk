@@ -15,20 +15,36 @@ describe('PoolModule', () => {
     poolModule = sdk.Pool;
   });
 
-  it('getAllPools', async () => {
-    const pools = await sdk.Pool.getAllPools();
+  describe('getAllPools', () => {
+    it('normal', async () => {
+      const pools = await sdk.Pool.getAllPools();
 
-    pools.forEach((pool) => {
-      expect(pool.aprBreakdown).toBeDefined();
+      pools.forEach((pool) => {
+        expect(pool.aprBreakdown).toBeDefined();
 
-      const aprDB = new Decimal(pool.apy);
-      const feeApr = new Decimal(pool.aprBreakdown.fee);
-      const gotApr = pool.aprBreakdown.rewards.reduce((res, reward) => {
-        return res.add(reward.apr);
-      }, feeApr);
+        const aprDB = new Decimal(pool.apy);
+        const feeApr = new Decimal(pool.aprBreakdown.fee);
+        const gotApr = pool.aprBreakdown.rewards.reduce((res, reward) => {
+          return res.add(reward.apr);
+        }, feeApr);
 
-      expect(DecimalUtils.toBeCloseToDecimal(gotApr, aprDB));
-      expect(DecimalUtils.toBeCloseToDecimal(gotApr, new Decimal(pool.aprBreakdown.total)));
+        expect(DecimalUtils.toBeCloseToDecimal(gotApr, aprDB));
+        expect(DecimalUtils.toBeCloseToDecimal(gotApr, new Decimal(pool.aprBreakdown.total)));
+      });
+    });
+
+    it('getAllPools no validate', async () => {
+      (sdk.Pool as any).validatePoolsId = jest.fn().mockRejectedValueOnce(new Error('test error'));
+      await sdk.Pool.getAllPools(undefined, false);
+      jest.clearAllMocks();
+    });
+
+    it('getAllPools validate fails', async () => {
+      (sdk.Pool as any).validatePoolsId = jest.fn().mockRejectedValueOnce(new Error('test error'));
+      await expect(async () => {
+        await sdk.Pool.getAllPools();
+      }).rejects.toThrow();
+      jest.clearAllMocks();
     });
   });
 
