@@ -61,4 +61,28 @@ describe('PoolModule', () => {
       );
     });
   });
+
+  describe('getPool', () => {
+    it('skip validation', async () => {
+      (sdk.Pool as any).validatePoolsId = jest.fn().mockRejectedValueOnce(new Error('test error'));
+      await sdk.Pool.getPool(
+        '0x53ceda0bbe1bdb3c1c0b1c53ecb49856f135a9fffc91e5a50aa4045a3f8240f7',
+        undefined,
+        false,
+      );
+      jest.clearAllMocks();
+    });
+
+    it('validation error', async () => {
+      (sdk.Pool as any).validatePoolsId = jest.fn().mockRejectedValueOnce(new Error('test error'));
+      await expect(async () => {
+        await sdk.Pool.getPool(
+          '0x53ceda0bbe1bdb3c1c0b1c53ecb49856f135a9fffc91e5a50aa4045a3f8240f7',
+          undefined,
+          true,
+        );
+      }).rejects.toThrow();
+      jest.clearAllMocks();
+    });
+  });
 });

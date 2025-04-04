@@ -672,9 +672,15 @@ export class PoolModule implements BaseModule {
     );
   }
 
-  public async getPool(poolId: string, headers?: HeadersInit): Promise<ExtendedPoolWithApr> {
+  public async getPool(
+    poolId: string,
+    headers?: HeadersInit,
+    validate: boolean = true,
+  ): Promise<ExtendedPoolWithApr> {
     const pool = await fetchPoolApi(this.sdk.baseUrl, poolId, headers);
-    await this.validatePoolsId([pool.poolId]);
+    if (validate) {
+      await this.validatePoolsId([pool.poolId]);
+    }
 
     const tokens = await this.getAllTokens();
 
