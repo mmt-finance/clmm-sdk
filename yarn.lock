@@ -801,14 +801,6 @@
   resolved "https://registry.yarnpkg.com/@suchipi/femver/-/femver-1.0.0.tgz#4909dcc069695e07bd23a64c4bfe411d11d9692f"
   integrity sha512-bprE8+K5V+DPX7q2e2K57ImqNBdfGHDIWaGI5xHxZoxbKOuQZn4wzPiUxOAHnsUr3w3xHrWXwN7gnG/iIuEMIg==
 
-"@syntsugar/cc-graph@^0.1.1":
-  version "0.1.1"
-  resolved "https://registry.yarnpkg.com/@syntsugar/cc-graph/-/cc-graph-0.1.1.tgz#8ff79e2bd4264d163069fe5ce3a5c47107dcb2a9"
-  integrity sha512-u5ne/gnGokhYGRrLs4IfQPWcNnxwHTO2KaqyJ6t6xupOLTyBuqAIeMpblDK8SGPBcXcWgePKZcirKJmY5cgHmQ==
-  dependencies:
-    ss-queue "1.0.x"
-    ss-stack "1.0.x"
-
 "@tsconfig/node10@^1.0.7":
   version "1.0.11"
   resolved "https://registry.yarnpkg.com/@tsconfig/node10/-/node10-1.0.11.tgz#6ee46400685f130e278128c7b38b7e031ff5b2f2"
@@ -2876,34 +2868,6 @@ sprintf-js@~1.0.2:
   resolved "https://registry.yarnpkg.com/sprintf-js/-/sprintf-js-1.0.3.tgz#04e6926f662895354f3dd015203633b857297e2c"
   integrity sha512-D9cPgkvLlV3t3IzL0D0YLvGA9Ahk4PcvVwUbN0dSGr1aP0Nrt4AEnTUbuGvquEC0mA64Gqt1fzirlRs5ibXx8g==
 
-ss-comparator@^1.0.0:
-  version "1.0.1"
-  resolved "https://registry.yarnpkg.com/ss-comparator/-/ss-comparator-1.0.1.tgz#528a9fd4f4aaec53244e2e12bcbf84e6a58e1cc1"
-  integrity sha512-zcZ/OhyVPx3AoOYxOJ7BmGM4USzlULFuPGTeMBwf6rf2RhS/0XISyOOYQu83U7OHl62AiEKlYv+sqFccP8L0Cg==
-  dependencies:
-    ss-linked-list "^1.1.2"
-
-ss-linked-list@^1.1.1, ss-linked-list@^1.1.2:
-  version "1.1.5"
-  resolved "https://registry.yarnpkg.com/ss-linked-list/-/ss-linked-list-1.1.5.tgz#1e632761c46f3c48a35dda328261e1907882e00d"
-  integrity sha512-l/mMqU70q01cBJLL8Mu2FWUGKlAqiYrI2F68XMkNhyOsVx+Mh9gkgCMaZMyUkXCadQwx68isMHb8S4h88lHE2Q==
-  dependencies:
-    ss-comparator "^1.0.0"
-
-ss-queue@1.0.x:
-  version "1.0.5"
-  resolved "https://registry.yarnpkg.com/ss-queue/-/ss-queue-1.0.5.tgz#58450dcfa7dd8374fd5e8c6c97530664ff544001"
-  integrity sha512-1eyYJr00ZYRIbkMSBBSUrS2YAvVbjFCZ+CZZqNBw5Q7SQrOo9o3MjMhlEzPUsODhxjqPBtrqPzApuulCpjY3CQ==
-  dependencies:
-    ss-linked-list "^1.1.1"
-
-ss-stack@1.0.x:
-  version "1.0.8"
-  resolved "https://registry.yarnpkg.com/ss-stack/-/ss-stack-1.0.8.tgz#b4e82c68edc433e60a363010bfc2b9d791d76362"
-  integrity sha512-bELljop9qaG6V1ZMC65IfHQOmkHk8RhMnnvJuezlMVcItILf8431EbLJ6dzwwP9w+mVxngGiUx8042wN9v6fLA==
-  dependencies:
-    ss-linked-list "^1.1.2"
-
 stack-utils@^2.0.3:
   version "2.0.6"
   resolved "https://registry.yarnpkg.com/stack-utils/-/stack-utils-2.0.6.tgz#aaf0748169c02fc33c8232abccf933f54a1cc34f"
@@ -3050,11 +3014,6 @@ ts-node@^10.9.2:
     make-error "^1.1.1"
     v8-compile-cache-lib "^3.0.1"
     yn "3.1.1"
-
-tslib@^2.8.1:
-  version "2.8.1"
-  resolved "https://registry.yarnpkg.com/tslib/-/tslib-2.8.1.tgz#612efe4ed235d567e8aba5f2a5fab70280ade83f"
-  integrity sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w==
 
 type-detect@4.0.8:
   version "4.0.8"
