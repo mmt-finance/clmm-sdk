@@ -902,14 +902,14 @@ export class PoolModule implements BaseModule {
       const tokenA = tokens.find((token) => token.coinType === pool?.tokenXType);
       const tokenB = tokens.find((token) => token.coinType === pool?.tokenYType);
       const lower_price =
-        (pool.isStable ? 0.99 : 0.75) *
+        (pool.isStable ? 0.996 : 0.9) *
         TickMath.sqrtPriceX64ToPrice(
           new BN(pool?.currentSqrtPrice),
           tokenA?.decimals,
           tokenB?.decimals,
         ).toNumber();
       const upper_price =
-        (pool.isStable ? 1.01 : 1.25) *
+        (pool.isStable ? 1.004 : 1.1) *
         TickMath.sqrtPriceX64ToPrice(
           new BN(pool?.currentSqrtPrice),
           tokenA?.decimals,
