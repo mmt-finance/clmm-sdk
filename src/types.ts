@@ -182,6 +182,4 @@ export interface PathResult {
   isXToY?: boolean[];
 }
 
-export type Graph = Map<string, PoolTokenType[]>;
-
 export type SuiAddress = string;

@@ -23,7 +23,8 @@ describe('RouteModule', () => {
       '0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI';
     const tokenYType =
       '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC';
-    expect(await routeModule.fetchRoute(tokenXType, tokenYType, 2)).toBeDefined();
+    const amount = 2;
+    expect(await routeModule.fetchRoute(tokenXType, tokenYType, amount)).toBeDefined();
   }, 30000);
 
   it('positive SUI/USDC pass pools and tokens', async () => {
@@ -33,7 +34,10 @@ describe('RouteModule', () => {
       '0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI';
     const tokenYType =
       '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC';
-    expect(await routeModule.fetchRoute(tokenXType, tokenYType, 2, pools, tokens)).toBeDefined();
+    const amount = 2;
+    expect(
+      await routeModule.fetchRoute(tokenXType, tokenYType, amount, pools, tokens),
+    ).toBeDefined();
   }, 30000);
 
   it('negative SUI/USDC pass wrong tokens', async () => {
@@ -44,9 +48,10 @@ describe('RouteModule', () => {
     const tokenYType =
       '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC';
     const finallyTokens = tokens.filter((token) => token.coinType !== tokenXType);
+    const amount = 2;
 
     await expect(
-      routeModule.fetchRoute(tokenXType, tokenYType, 2, pools, finallyTokens),
+      routeModule.fetchRoute(tokenXType, tokenYType, amount, pools, finallyTokens),
     ).rejects.toThrow('No pools or source token found');
   }, 30000);
 
@@ -57,10 +62,11 @@ describe('RouteModule', () => {
       '0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI';
     const tokenYType =
       '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC';
+    const amount = 2;
 
-    expect(await routeModule.fetchRoute(tokenXType, tokenYType, 2, [], tokens)).toBeDefined();
+    expect(await routeModule.fetchRoute(tokenXType, tokenYType, amount, [], tokens)).toBeDefined();
 
-    expect(await routeModule.fetchRoute(tokenXType, tokenYType, 2, pools, [])).toBeDefined();
+    expect(await routeModule.fetchRoute(tokenXType, tokenYType, amount, pools, [])).toBeDefined();
   }, 30000);
 
   it('positive ALPHA/WAL', async () => {
@@ -68,7 +74,9 @@ describe('RouteModule', () => {
       '0xfe3afec26c59e874f3c1d60b8203cb3852d2bb2aa415df9548b8d688e6683f93::alpha::ALPHA';
     const tokenYType =
       '0x356a26eb9e012a68958082340d4c4116e7f55615cf27affcff209cf0ae544f59::wal::WAL';
-    expect(await routeModule.fetchRoute(tokenXType, tokenYType, 2)).toBeDefined();
+    const amount = 2;
+
+    expect(await routeModule.fetchRoute(tokenXType, tokenYType, amount)).toBeDefined();
   }, 30000);
 
   it('positive STSUI/WAL', async () => {
@@ -76,13 +84,17 @@ describe('RouteModule', () => {
       '0xd1b72982e40348d069bb1ff701e634c117bb5f741f44dff91e472d3b01461e55::stsui::STSUI';
     const tokenYType =
       '0x356a26eb9e012a68958082340d4c4116e7f55615cf27affcff209cf0ae544f59::wal::WAL';
-    expect(await routeModule.fetchRoute(tokenXType, tokenYType, 2)).toBeDefined();
+    const amount = 2;
+
+    expect(await routeModule.fetchRoute(tokenXType, tokenYType, amount)).toBeDefined();
   }, 30000);
 
   it('negative', async () => {
     const tokenXType = '0x5145494a5f5100e645e4b0aa950fa6b68f614e8c59e17bc5ded3495123a79178::ns::NS';
     const tokenYType =
       '0xaf8cd5edc19c4512f4259f0bee101a40d41ebed738ade5874359610ef8eeced5::coin::COIN';
-    expect(await routeModule.fetchRoute(tokenXType, tokenYType, 2)).toEqual(null);
+    const amount = 2;
+
+    expect(await routeModule.fetchRoute(tokenXType, tokenYType, amount)).toEqual(null);
   }, 30000);
 });
