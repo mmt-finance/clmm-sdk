@@ -3,6 +3,7 @@ import { PositionModule } from './modules/positionModule';
 import { ClmmConsts } from './types';
 import { Config } from './config';
 import { SuiClient } from '@mysten/sui/client';
+import { RouteModule } from './modules/routeModule';
 
 export class MmtSDK {
   protected readonly rpcModule: SuiClient;
@@ -10,6 +11,8 @@ export class MmtSDK {
   protected readonly poolModule: PoolModule;
 
   protected readonly positionModule: PositionModule;
+
+  protected readonly routeModule: RouteModule;
 
   protected readonly packageId: string;
 
@@ -41,6 +44,7 @@ export class MmtSDK {
     };
     this.poolModule = new PoolModule(this);
     this.positionModule = new PositionModule(this);
+    this.routeModule = new RouteModule(this);
   }
 
   static NEW(sdkParams?: {
@@ -80,6 +84,10 @@ export class MmtSDK {
 
   get Position(): PositionModule {
     return this.positionModule;
+  }
+
+  get Route(): RouteModule {
+    return this.routeModule;
   }
 
   get PackageId(): string {

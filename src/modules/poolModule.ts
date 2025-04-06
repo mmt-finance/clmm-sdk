@@ -11,6 +11,7 @@ import {
   Rewarder,
   TokenSchema,
   ExtendedPoolWithApr,
+  PoolTokenType,
 } from '../types';
 import { MmtSDK } from '../sdk';
 import { BaseModule } from '../interfaces/BaseModule';
@@ -648,9 +649,14 @@ export class PoolModule implements BaseModule {
     }
   }
 
-  public async getAllPools(headers?: HeadersInit): Promise<ExtendedPoolWithApr[]> {
+  public async getAllPools(
+    headers?: HeadersInit,
+    validate: boolean = true,
+  ): Promise<ExtendedPoolWithApr[]> {
     const pools = await fetchAllPoolsApi(this.sdk.baseUrl, headers);
-    await this.validatePoolsId(pools.map((pool) => pool.poolId));
+    if (validate) {
+      await this.validatePoolsId(pools.map((pool) => pool.poolId));
+    }
 
     const tokens = await this.getAllTokens();
 
@@ -666,9 +672,15 @@ export class PoolModule implements BaseModule {
     );
   }
 
-  public async getPool(poolId: string, headers?: HeadersInit): Promise<ExtendedPoolWithApr> {
+  public async getPool(
+    poolId: string,
+    headers?: HeadersInit,
+    validate: boolean = true,
+  ): Promise<ExtendedPoolWithApr> {
     const pool = await fetchPoolApi(this.sdk.baseUrl, poolId, headers);
-    await this.validatePoolsId([pool.poolId]);
+    if (validate) {
+      await this.validatePoolsId([pool.poolId]);
+    }
 
     const tokens = await this.getAllTokens();
 

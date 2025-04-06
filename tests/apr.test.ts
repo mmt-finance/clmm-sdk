@@ -1,4 +1,4 @@
-import { MmtSDK, PoolModule, TickMath } from '../src';
+import { MmtSDK, PoolModule } from '../src';
 import { describe, it, beforeEach, expect } from '@jest/globals';
 import ALL_POOL_DATA from './__test_data__/all-pools.json';
 import ALL_TOKEN_DATA from './__test_data__/all-tokens.json';
