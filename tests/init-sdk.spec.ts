@@ -89,7 +89,13 @@ describe('MmtSDK', () => {
 
   it('should use sdk.customHeaders if headers not passed', async () => {
     const network = 'testnet';
-    const customHeaders = { 'X-Custom-Header': 'test-header' };
+    const customHeaders = { 'x-custom-header': 'customHeaders-test-header' };
+    const headers = {
+      'x-custom-header': 'headers-test-header',
+      'x-custom-token': 'test-token',
+      'cf-bypass': 'true',
+    };
+    const mergeHeaders = { ...customHeaders, ...headers };
 
     const sdk = MmtSDK.NEW({
       network: network,
@@ -102,8 +108,8 @@ describe('MmtSDK', () => {
     jest.spyOn(poolModule as any, 'calcRewardApr').mockResolvedValue({ total: 0 });
     mockFn.mockResolvedValue([]);
 
-    await poolModule.getAllPools(undefined, false);
-    expect(mockFn).toHaveBeenCalledWith(sdk.baseUrl, customHeaders);
+    await poolModule.getAllPools(headers, false);
+    expect(mockFn).toHaveBeenCalledWith(sdk.baseUrl, mergeHeaders);
   });
 
   it('Pass client negative', async () => {

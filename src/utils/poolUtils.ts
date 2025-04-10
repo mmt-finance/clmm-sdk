@@ -119,13 +119,13 @@ export async function fetchTickLiquidityApi(
   poolId: string,
   limit: number,
   offset: number,
-  customHeaders?: HeadersInit,
+  headers?: HeadersInit,
 ) {
-  const headers = {
+  const defaultHeaders = {
     'Content-Type': 'application/json',
   };
 
-  const mergedHeaders = { ...headers, ...customHeaders };
+  const mergedHeaders = { ...defaultHeaders, ...headers };
   const method = 'GET';
   const options = {
     method,
