@@ -14,11 +14,11 @@ export class MmtSDK {
 
   protected readonly routeModule: RouteModule;
 
-  protected readonly packageId: string;
-
   public readonly baseUrl: string;
 
   public readonly contractConst: ClmmConsts;
+
+  public readonly customHeaders?: HeadersInit;
 
   /**
    * @deprecated use MmtSDK.NEW instead
@@ -30,6 +30,7 @@ export class MmtSDK {
     mmtApiUrl: string = '',
     contractConst?: ClmmConsts,
     client?: SuiClient,
+    customHeaders?: HeadersInit,
   ) {
     if (client) {
       this.rpcModule = client;
@@ -42,6 +43,7 @@ export class MmtSDK {
       ...Config.getDefaultClmmParams(network),
       ...(packageId ? { packageId } : {}),
     };
+    this.customHeaders = customHeaders;
     this.poolModule = new PoolModule(this);
     this.positionModule = new PositionModule(this);
     this.routeModule = new RouteModule(this);
@@ -53,6 +55,7 @@ export class MmtSDK {
     mmtApiUrl?: string;
     suiClientUrl?: string;
     client?: SuiClient;
+    customHeaders?: HeadersInit;
   }) {
     if (sdkParams.network === 'custom' && !sdkParams?.contractConst) {
       throw new Error('missing contractConst for custom network');
@@ -71,6 +74,7 @@ export class MmtSDK {
       mmtApiUrl,
       clmm,
       sdkParams?.client,
+      sdkParams?.customHeaders,
     );
   }
 

@@ -653,7 +653,7 @@ export class PoolModule implements BaseModule {
     headers?: HeadersInit,
     validate: boolean = true,
   ): Promise<ExtendedPoolWithApr[]> {
-    const pools = await fetchAllPoolsApi(this.sdk.baseUrl, headers);
+    const pools = await fetchAllPoolsApi(this.sdk.baseUrl, headers ?? this.sdk.customHeaders);
     if (validate) {
       await this.validatePoolsId(pools.map((pool) => pool.poolId));
     }
@@ -677,7 +677,7 @@ export class PoolModule implements BaseModule {
     headers?: HeadersInit,
     validate: boolean = true,
   ): Promise<ExtendedPoolWithApr> {
-    const pool = await fetchPoolApi(this.sdk.baseUrl, poolId, headers);
+    const pool = await fetchPoolApi(this.sdk.baseUrl, poolId, headers ?? this.sdk.customHeaders);
     if (validate) {
       await this.validatePoolsId([pool.poolId]);
     }
@@ -731,12 +731,12 @@ export class PoolModule implements BaseModule {
   }
 
   public async getAllTokens(headers?: HeadersInit) {
-    const tokens = await fetchAllTokenApi(this.sdk.baseUrl, headers);
+    const tokens = await fetchAllTokenApi(this.sdk.baseUrl, headers ?? this.sdk.customHeaders);
     return tokens;
   }
 
   public async getToken(tokenId: string, headers?: HeadersInit) {
-    const token = await fetchTokenApi(this.sdk.baseUrl, tokenId, headers);
+    const token = await fetchTokenApi(this.sdk.baseUrl, tokenId, headers ?? this.sdk.customHeaders);
     return token;
   }
 
@@ -751,7 +751,13 @@ export class PoolModule implements BaseModule {
     let allTickLiquidities: TickLiquidity[] = [];
 
     while (hasNextPage) {
-      const response = await fetchTickLiquidityApi(this.sdk.BaseUrl, poolId, limit, offset);
+      const response = await fetchTickLiquidityApi(
+        this.sdk.BaseUrl,
+        poolId,
+        limit,
+        offset,
+        this.sdk.customHeaders,
+      );
       const tickData: TickLiquidity[] = response.data?.tickData || [];
       if (reverse && tickData.length > 0) {
         tickData.map((tickLiquidity) => {
@@ -773,7 +779,13 @@ export class PoolModule implements BaseModule {
     reverse: boolean = false,
     headers?: HeadersInit,
   ) {
-    const response = await fetchTickLiquidityApi(this.sdk.BaseUrl, poolId, limit, offset);
+    const response = await fetchTickLiquidityApi(
+      this.sdk.BaseUrl,
+      poolId,
+      limit,
+      offset,
+      this.sdk.customHeaders,
+    );
     const tickData: TickLiquidity[] = response.data?.tickData || [];
     if (reverse && tickData.length > 0) {
       tickData.map((tickLiquidity) => {
@@ -785,7 +797,11 @@ export class PoolModule implements BaseModule {
   }
 
   public async getRewardersApy(poolId: string, headers?: HeadersInit) {
-    const rewarders = await fetchRewardersApy(this.sdk.baseUrl, poolId, headers);
+    const rewarders = await fetchRewardersApy(
+      this.sdk.baseUrl,
+      poolId,
+      headers ?? this.sdk.customHeaders,
+    );
     return rewarders;
   }
 

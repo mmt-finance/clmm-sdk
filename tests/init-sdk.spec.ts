@@ -72,6 +72,40 @@ describe('MmtSDK', () => {
     expect(sdk.BaseUrl).toEqual(Config.getDefaultMmtApiUrl(network));
   });
 
+  it('Pass client customHeaders', async () => {
+    const network = 'testnet';
+    const customHeaders = {
+      'x-custom-token': 'test-token',
+      'cf-bypass': 'true',
+    };
+    const sdk = MmtSDK.NEW({
+      network: network,
+      customHeaders: customHeaders,
+    });
+    expect(sdk.PackageId).toEqual(Config.getDefaultClmmParams(network).packageId);
+    expect(sdk.BaseUrl).toEqual(Config.getDefaultMmtApiUrl(network));
+    expect(sdk.customHeaders).toEqual(customHeaders);
+  });
+
+  it('should use sdk.customHeaders if headers not passed', async () => {
+    const network = 'testnet';
+    const customHeaders = { 'X-Custom-Header': 'test-header' };
+
+    const sdk = MmtSDK.NEW({
+      network: network,
+      customHeaders: customHeaders,
+    });
+    const poolModule = sdk.Pool;
+
+    const mockFn = jest.spyOn(require('../src/utils/poolUtils'), 'fetchAllPoolsApi');
+    jest.spyOn(poolModule as any, 'getAllTokens').mockResolvedValue([]);
+    jest.spyOn(poolModule as any, 'calcRewardApr').mockResolvedValue({ total: 0 });
+    mockFn.mockResolvedValue([]);
+
+    await poolModule.getAllPools(undefined, false);
+    expect(mockFn).toHaveBeenCalledWith(sdk.baseUrl, customHeaders);
+  });
+
   it('Pass client negative', async () => {
     const suiClientUrl = '    ';
     expect(() =>
