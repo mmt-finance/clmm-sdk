@@ -788,13 +788,10 @@ export class PoolModule implements BaseModule {
     reverse: boolean = false,
     headers?: HeadersInit,
   ) {
-    const response = await fetchTickLiquidityApi(
-      this.sdk.BaseUrl,
-      poolId,
-      limit,
-      offset,
-      this.sdk.customHeaders,
-    );
+    const response = await fetchTickLiquidityApi(this.sdk.BaseUrl, poolId, limit, offset, {
+      ...this.sdk.customHeaders,
+      ...headers,
+    });
     const tickData: TickLiquidity[] = response.data?.tickData || [];
     if (reverse && tickData.length > 0) {
       tickData.map((tickLiquidity) => {
@@ -806,11 +803,10 @@ export class PoolModule implements BaseModule {
   }
 
   public async getRewardersApy(poolId: string, headers?: HeadersInit) {
-    const rewarders = await fetchRewardersApy(
-      this.sdk.baseUrl,
-      poolId,
-      headers ?? this.sdk.customHeaders,
-    );
+    const rewarders = await fetchRewardersApy(this.sdk.baseUrl, poolId, {
+      ...this.sdk.customHeaders,
+      ...headers,
+    });
     return rewarders;
   }
 

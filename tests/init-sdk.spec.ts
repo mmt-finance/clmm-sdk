@@ -112,6 +112,27 @@ describe('MmtSDK', () => {
     expect(mockFn).toHaveBeenCalledWith(sdk.baseUrl, mergeHeaders);
   });
 
+  it('no custom header specified', async () => {
+    const network = 'testnet';
+    const headers = {
+      'x-custom-header': 'headers-test-header',
+      'x-custom-token': 'test-token',
+      'cf-bypass': 'true',
+    };
+    const sdk = MmtSDK.NEW({
+      network: network,
+    });
+    const poolModule = sdk.Pool;
+
+    const mockFn = jest.spyOn(require('../src/utils/poolUtils'), 'fetchAllPoolsApi');
+    jest.spyOn(poolModule as any, 'getAllTokens').mockResolvedValue([]);
+    jest.spyOn(poolModule as any, 'calcRewardApr').mockResolvedValue({ total: 0 });
+    mockFn.mockResolvedValue([]);
+
+    await poolModule.getAllPools(headers, false);
+    expect(mockFn).toHaveBeenCalledWith(sdk.baseUrl, headers);
+  });
+
   it('Pass client negative', async () => {
     const suiClientUrl = '    ';
     expect(() =>
