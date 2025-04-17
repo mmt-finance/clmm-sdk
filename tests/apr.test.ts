@@ -26,7 +26,7 @@ describe('PoolModule.collectAllPoolsRewards', () => {
     const poolId = '0xb0a595cb58d35e07b711ac145b4846c8ed39772c6d6f6716d89d71c64384543b';
     const allPools = await poolModule.getAllPools();
     const pool = allPools.filter((pool) => pool.poolId === poolId)[0];
-    expect(pool.aprBreakdown.fee).toEqual('0.16080169483414516253');
+    expect(pool.aprBreakdown.fee).toEqual('16.080169483414516253');
   });
 
   it('test unStable apr', async () => {
