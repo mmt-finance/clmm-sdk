@@ -934,15 +934,32 @@ export class PoolModule implements BaseModule {
       const tokens = tokensInput || (await this.getAllTokens());
       const tokenA = tokens.find((token) => token.coinType === pool?.tokenXType);
       const tokenB = tokens.find((token) => token.coinType === pool?.tokenYType);
+
+      const rewardsArr = rewarders?.map((rewarder) => {
+        const coinType = rewarder.coin_type;
+        const token = tokens.find((token) => token.coinType === coinType);
+        return {
+          rewardsAmount: Number(rewarder.reward_amount),
+          rewardsPrice: token?.price,
+          rewardsDecimal: token?.decimals,
+          coinType: coinType,
+          hasEnded: rewarder.hasEnded,
+          flowRate: rewarder.flow_rate,
+        };
+      });
+      if (pool.isStable) {
+        return this.getStablePoolAPR(pool, rewardsArr);
+      }
+
       const lower_price =
-        (pool.isStable ? 0.999 : 0.9) *
+        0.9 *
         TickMath.sqrtPriceX64ToPrice(
           new BN(pool?.currentSqrtPrice),
           tokenA?.decimals,
           tokenB?.decimals,
         ).toNumber();
       const upper_price =
-        (pool.isStable ? 1.001 : 1.1) *
+        1.1 *
         TickMath.sqrtPriceX64ToPrice(
           new BN(pool?.currentSqrtPrice),
           tokenA?.decimals,
@@ -981,18 +998,6 @@ export class PoolModule implements BaseModule {
         throw new Error('Token not found');
       }
 
-      const rewardsArr = rewarders?.map((rewarder) => {
-        const coinType = rewarder.coin_type;
-        const token = tokens.find((token) => token.coinType === coinType);
-        return {
-          rewardsAmount: Number(rewarder.reward_amount),
-          rewardsPrice: token?.price,
-          rewardsDecimal: token?.decimals,
-          coinType: coinType,
-          hasEnded: rewarder.hasEnded,
-          flowRate: rewarder.flow_rate,
-        };
-      });
       const aprData = this.estPositionAPRWithDeltaMethod(
         convertI32ToSigned(Number(pool.currentTickIndex)),
         pool_lower_tick_index,
@@ -1015,5 +1020,52 @@ export class PoolModule implements BaseModule {
       console.error('Error getting rewards apy.');
       console.error(e);
     }
+  }
+
+  private getStablePoolAPR(
+    pool: ExtendedPool,
+    rewardsArr: {
+      rewardsAmount: number;
+      rewardsPrice: string;
+      rewardsDecimal: number;
+      coinType: string;
+      hasEnded: boolean;
+      flowRate: number;
+    }[],
+  ) {
+    const feeUSD24h = new Decimal(pool?.fees24h ?? 0);
+    const tvlUSD = pool.tvl;
+
+    const feeAPR = new Decimal(tvlUSD).eq(0)
+      ? new Decimal(0)
+      : feeUSD24h.mul(365).div(tvlUSD).mul(1.2);
+
+    const rewarderApr = (rewardsArr ?? [])
+      .map((item) => {
+        if (item.hasEnded) return null;
+
+        const amountPerDay = new Decimal(item.flowRate)
+          .div(new Decimal('18446744073709551616'))
+          .mul(86400)
+          .div(new Decimal(10 ** item.rewardsDecimal));
+
+        const rewardUSDPerDay = amountPerDay.mul(item.rewardsPrice ?? 0);
+
+        const apr = new Decimal(tvlUSD).eq(0)
+          ? new Decimal(0)
+          : rewardUSDPerDay.mul(365).div(tvlUSD).mul(1.2);
+
+        return {
+          rewarderApr: apr,
+          coinType: item.coinType,
+          amountPerDay,
+        };
+      })
+      .filter(Boolean);
+
+    return {
+      feeAPR,
+      rewarderApr,
+    };
   }
 }
