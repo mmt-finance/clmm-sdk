@@ -1,18 +1,19 @@
+import { ExtendedPool, PoolParams, PositionStatus, RewardsData, TokenSchema } from '../types';
+import { TickMath, convertI32ToSigned } from '../utils/math/tickMath';
 import {
-  TransactionArgument,
   Transaction,
+  TransactionArgument,
   TransactionObjectArgument,
 } from '@mysten/sui/transactions';
+import { fetchUserObjectsByPkg, getCoinAmountFromLiquidity } from '../utils/poolUtils';
+import { transformPositionRpcObject, txnArgument } from '../utils/common';
+
+import { BN } from 'bn.js';
 import { BaseModule } from '../interfaces/BaseModule';
 import { MmtSDK } from '../sdk';
-import { bcs } from '@mysten/sui/bcs';
-import { transformPositionRpcObject, txnArgument } from '../utils/common';
-import { ExtendedPool, PoolParams, PositionStatus, RewardsData, TokenSchema } from '../types';
-import { fetchUserObjectsByPkg, getCoinAmountFromLiquidity } from '../utils/poolUtils';
-import { convertI32ToSigned, TickMath } from '../utils/math/tickMath';
-import { BN } from 'bn.js';
-import { getPositionStatus } from '../utils/positionUtils';
 import { SuiClient } from '@mysten/sui/dist/cjs/client';
+import { bcs } from '@mysten/sui/bcs';
+import { getPositionStatus } from '../utils/positionUtils';
 
 export class PositionModule implements BaseModule {
   protected _sdk: MmtSDK;
@@ -258,17 +259,17 @@ export class PositionModule implements BaseModule {
           const rewardsData = positionRewardsInfo[positionData.id.id];
           const feeUsdValue = rewardsData
             ? calculateUsdValue(rewardsData.feeCollected.amountX, 'tokenX') +
-              calculateUsdValue(rewardsData.feeCollected.amountY, 'tokenY')
+            calculateUsdValue(rewardsData.feeCollected.amountY, 'tokenY')
             : 0;
 
           const rewardsUsdValue = rewardsData
             ? rewardsData.rewards.reduce((total, reward) => {
-                const coinType = reward.coinType.includes('0x2::sui::SUI')
-                  ? '0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI'
-                  : reward.coinType;
-                const token = tokens.find((t) => t.coinType === coinType);
-                return total + (reward.amount / 10 ** token.decimals) * tokenPriceMap.get(coinType);
-              }, 0)
+              const coinType = reward.coinType.includes('0x2::sui::SUI')
+                ? '0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI'
+                : reward.coinType;
+              const token = tokens.find((t) => t.coinType === coinType);
+              return total + (reward.amount / 10 ** token.decimals) * tokenPriceMap.get(coinType);
+            }, 0)
             : 0;
 
           return {
@@ -282,11 +283,11 @@ export class PositionModule implements BaseModule {
             amount: totalUsdValue,
             status:
               PositionStatus[
-                getPositionStatus(
-                  Number(pool.currentSqrtPrice),
-                  Number(lowerTickSqrtPrice),
-                  Number(upperTickSqrtPrice),
-                )
+              getPositionStatus(
+                Number(pool.currentSqrtPrice),
+                Number(lowerTickSqrtPrice),
+                Number(upperTickSqrtPrice),
+              )
               ],
             claimableRewards: rewardsUsdValue + feeUsdValue,
             rewarders: rewardsData ? rewardsData.rewards : [],
@@ -303,6 +304,123 @@ export class PositionModule implements BaseModule {
         .filter(Boolean);
     } catch (e) {
       console.error('Error in getAllUserPositions:', e);
+      throw e;
+    }
+  }
+
+  public async getUserPositionsByPoolId(address: string, poolId: string) {
+    try {
+      const [objects, pool, tokens] = await Promise.all([
+        fetchUserObjectsByPkg(this.sdk.rpcClient, this.sdk.contractConst.publishedAt, address),
+        this.sdk.Pool.getPool(poolId),
+        this.sdk.Pool.getAllTokens(),
+      ]);
+
+      const positions = objects.filter(
+        (obj: any) => obj.type === `${this.sdk.PackageId}::position::Position` && obj.fields.pool_id === poolId
+      );
+
+      if (!positions.length) return [];
+
+      const positionRewardsInfo = await this.fetchRewards(
+        positions,
+        [pool],
+        address,
+        this.sdk.rpcClient,
+      );
+
+      const tokenPriceMap = new Map(tokens.map((token) => [token.coinType, Number(token.price)]));
+
+      return positions
+        .map((position: any) => {
+          const positionData = position.fields;
+          if (!positionData) return null;
+
+          const liquidity = new BN(positionData.liquidity ?? 0);
+          const upperTick = Number(positionData.tick_upper_index.fields.bits ?? 0);
+          const lowerTick = Number(positionData.tick_lower_index.fields.bits ?? 0);
+          const upperTickSqrtPrice = TickMath.tickIndexToSqrtPriceX64(
+            convertI32ToSigned(upperTick),
+          );
+          const lowerTickSqrtPrice = TickMath.tickIndexToSqrtPriceX64(
+            convertI32ToSigned(lowerTick),
+          );
+          const lowerPrice = Number(
+            TickMath.sqrtPriceX64ToPrice(
+              lowerTickSqrtPrice,
+              pool.tokenX.decimals,
+              pool.tokenY.decimals,
+            ),
+          );
+          const upperPrice = Number(
+            TickMath.sqrtPriceX64ToPrice(
+              upperTickSqrtPrice,
+              pool.tokenX.decimals,
+              pool.tokenY.decimals,
+            ),
+          );
+          const { coinA, coinB } = getCoinAmountFromLiquidity(
+            liquidity,
+            new BN(pool.currentSqrtPrice.toString()),
+            lowerTickSqrtPrice,
+            upperTickSqrtPrice,
+            false,
+          );
+
+          const calculateUsdValue = (amount: number, coinType: string) =>
+            (amount / 10 ** pool[coinType].decimals) * tokenPriceMap.get(pool[coinType].coinType);
+
+          const totalUsdValue =
+            calculateUsdValue(Number(coinA), 'tokenX') + calculateUsdValue(Number(coinB), 'tokenY');
+
+          const rewardsData = positionRewardsInfo[positionData.id.id];
+          const feeUsdValue = rewardsData
+            ? calculateUsdValue(rewardsData.feeCollected.amountX, 'tokenX') +
+            calculateUsdValue(rewardsData.feeCollected.amountY, 'tokenY')
+            : 0;
+
+          const rewardsUsdValue = rewardsData
+            ? rewardsData.rewards.reduce((total, reward) => {
+              const coinType = reward.coinType.includes('0x2::sui::SUI')
+                ? '0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI'
+                : reward.coinType;
+              const token = tokens.find((t) => t.coinType === coinType);
+              return total + (reward.amount / 10 ** token.decimals) * tokenPriceMap.get(coinType);
+            }, 0)
+            : 0;
+
+          return {
+            objectId: positionData.id.id,
+            poolId: positionData.pool_id,
+            upperPrice,
+            lowerPrice,
+            upperTick,
+            lowerTick,
+            liquidity: new BN(positionData.liquidity ?? 0),
+            amount: totalUsdValue,
+            status:
+              PositionStatus[
+              getPositionStatus(
+                Number(pool.currentSqrtPrice),
+                Number(lowerTickSqrtPrice),
+                Number(upperTickSqrtPrice),
+              )
+              ],
+            claimableRewards: rewardsUsdValue + feeUsdValue,
+            rewarders: rewardsData ? rewardsData.rewards : [],
+            feeAmountXUsd: rewardsData
+              ? calculateUsdValue(rewardsData.feeCollected.amountX, 'tokenX')
+              : 0,
+            feeAmountYUsd: rewardsData
+              ? calculateUsdValue(rewardsData.feeCollected.amountY, 'tokenY')
+              : 0,
+            feeAmountX: rewardsData ? rewardsData.feeCollected.amountX : 0,
+            feeAmountY: rewardsData ? rewardsData.feeCollected.amountY : 0,
+          };
+        })
+        .filter(Boolean);
+    } catch (e) {
+      console.error('Error in getUserPositionsByPoolId:', e);
       throw e;
     }
   }
