@@ -1,13 +1,14 @@
-import Decimal from 'decimal.js';
 import { ExtendedPool, RewardersAPYSchema, TokenSchema } from '../types';
-import { MathUtil } from './math/commonMath';
-import BN from 'bn.js';
-import { convertI32ToSigned, TickMath } from './math/tickMath';
 import { SuiClient, SuiParsedData } from '@mysten/sui/dist/cjs/client';
-import { Transaction } from '@mysten/sui/transactions';
-import { ModuleConstants } from './constants';
-import { normalizeSuiObjectId } from '@mysten/sui/utils';
+import { TickMath, convertI32ToSigned } from './math/tickMath';
+
+import BN from 'bn.js';
+import Decimal from 'decimal.js';
+import { MathUtil } from './math/commonMath';
 import { MmtSDK } from '../sdk';
+import { ModuleConstants } from './constants';
+import { Transaction } from '@mysten/sui/transactions';
+import { normalizeSuiObjectId } from '@mysten/sui/utils';
 
 type LiquidityInput = {
   /**
@@ -133,7 +134,10 @@ export async function fetchTickLiquidityApi(
     body: null as null | string,
   };
 
-  const response = await fetch(`${baseUrl}/tickLiquidity/${poolId}`, options);
+  const response = await fetch(
+    `${baseUrl}/tickLiquidity/${poolId}?offset=${offset}&limit=${limit}`,
+    options,
+  );
   if (!response.ok) {
     throw new Error(`Request failed with status ${response.status}`);
   }
