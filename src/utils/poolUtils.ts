@@ -133,7 +133,10 @@ export async function fetchTickLiquidityApi(
     body: null as null | string,
   };
 
-  const response = await fetch(`${baseUrl}/tickLiquidity/${poolId}?offset=${offset}&limit=${limit}`, options);
+  const response = await fetch(
+    `${baseUrl}/tickLiquidity/${poolId}?offset=${offset}&limit=${limit}`,
+    options,
+  );
   if (!response.ok) {
     throw new Error(`Request failed with status ${response.status}`);
   }
