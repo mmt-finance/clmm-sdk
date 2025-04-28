@@ -1,6 +1,6 @@
 {
   "name": "@mmt-finance/clmm-sdk",
-  "version": "1.0.15",
+  "version": "1.0.16",
   "description": "Momentum SDK to access the Momentum CLMM",
   "private": false,
   "author": "Momentum Finance",
