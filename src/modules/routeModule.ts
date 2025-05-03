@@ -21,7 +21,7 @@ export class RouteModule implements BaseModule {
   public async fetchRoute(
     sourceToken: string,
     targetToken: string,
-    amount: number,
+    amount: bigint,
     extendedPools?: ExtendedPoolWithApr[],
     tokens?: TokenSchema[],
   ) {
@@ -52,12 +52,7 @@ export class RouteModule implements BaseModule {
       return null;
     }
 
-    const best = await this.devRunSwapAndChooseBestRoute(
-      pathResults,
-      pools,
-      amount,
-      sourceTokenSchema.decimals,
-    );
+    const best = await this.devRunSwapAndChooseBestRoute(pathResults, pools, amount);
     if (!best) {
       console.info(
         'No valid swap paths found:',
@@ -224,15 +219,12 @@ export class RouteModule implements BaseModule {
   private async devRunSwapAndChooseBestRoute(
     paths: PathResult[],
     pools: PoolTokenType[],
-    sourceAmount: number,
-    sourceDecimals: number,
+    sourceAmount: bigint,
   ) {
     const tasks = paths.map(async (path) => {
       const tx = new Transaction();
-      const rawAmount = BigInt(Math.floor(sourceAmount * 10 ** sourceDecimals));
-      const amountIn = rawAmount > U64_MAX ? U64_MAX : rawAmount;
-      const sourceAmountIn = tx.pure.u64(amountIn.toString());
-      const output = await this.dryRunSwap(tx, path, pools, sourceAmountIn);
+      const amountIn = sourceAmount > U64_MAX ? U64_MAX : sourceAmount;
+      const output = await this.dryRunSwap(tx, path, pools, tx.pure.u64(amountIn.toString()));
       return { path, output };
     });
     const results = await Promise.all(tasks);
