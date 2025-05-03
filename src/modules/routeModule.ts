@@ -5,7 +5,7 @@ import { bcs } from '@mysten/sui/bcs';
 import { BaseModule } from '../interfaces/BaseModule';
 import { MmtSDK } from '../sdk';
 import { Graph, GraphVertex, GraphEdge } from '@syntsugar/cc-graph';
-import { DRY_RUN_PATH_LEN } from '../utils/constants';
+import { DRY_RUN_PATH_LEN, U64_MAX } from '../utils/constants';
 
 export class RouteModule implements BaseModule {
   protected _sdk: MmtSDK;
@@ -21,7 +21,7 @@ export class RouteModule implements BaseModule {
   public async fetchRoute(
     sourceToken: string,
     targetToken: string,
-    amount: bigint,
+    amount: number,
     extendedPools?: ExtendedPoolWithApr[],
     tokens?: TokenSchema[],
   ) {
@@ -58,7 +58,18 @@ export class RouteModule implements BaseModule {
       amount,
       sourceTokenSchema.decimals,
     );
-    if (!best) throw new Error('No path found');
+    if (!best) {
+      console.info(
+        'No valid swap paths found:',
+        'sourceToken:',
+        sourceToken,
+        'targetToken:',
+        targetToken,
+        'amount:',
+        amount,
+      );
+      return null;
+    }
     return best.pools;
   }
 
@@ -213,19 +224,16 @@ export class RouteModule implements BaseModule {
   private async devRunSwapAndChooseBestRoute(
     paths: PathResult[],
     pools: PoolTokenType[],
-    sourceAmount: bigint,
+    sourceAmount: number,
     sourceDecimals: number,
   ) {
     const tasks = paths.map(async (path) => {
-      try {
-        const tx = new Transaction();
-        const sourceAmountIn = tx.pure.u64(Number(sourceAmount) * 10 ** sourceDecimals);
-        const output = await this.dryRunSwap(tx, path, pools, sourceAmountIn);
-        return { path, output };
-      } catch (err) {
-        console.warn(`Dry run failed on path:`, path, err);
-        return null;
-      }
+      const tx = new Transaction();
+      const rawAmount = BigInt(Math.floor(sourceAmount * 10 ** sourceDecimals));
+      const amountIn = rawAmount > U64_MAX ? U64_MAX : rawAmount;
+      const sourceAmountIn = tx.pure.u64(amountIn.toString());
+      const output = await this.dryRunSwap(tx, path, pools, sourceAmountIn);
+      return { path, output };
     });
     const results = await Promise.all(tasks);
     const validResults = results.filter(
@@ -292,7 +300,7 @@ export class RouteModule implements BaseModule {
       });
 
       if (res.error || res.effects?.status.status !== 'success') {
-        console.error(`Dry run failed: ${res.error || 'Unknown failure'}`);
+        console.info(`Dry run failed: ${res.error || 'Unknown failure'}`);
         return 0n;
       }
 
@@ -305,7 +313,7 @@ export class RouteModule implements BaseModule {
       const amountOutParsed = bcs.u64().parse(new Uint8Array(amountOut));
       return BigInt(amountOutParsed);
     } catch (err) {
-      console.error('Error in dry run swap:', err);
+      console.info('Error in dry run swap:', err);
       return 0n;
     }
   }

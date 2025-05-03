@@ -40,6 +40,30 @@ describe('RouteModule', () => {
     ).toBeDefined();
   }, 30000);
 
+  it('positive SUI/USDC pass pools and tokens - Input amount is too large', async () => {
+    const pools = await sdk.Pool.getAllPools();
+    const tokens = await sdk.Pool.getAllTokens();
+    const tokenXType =
+      '0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI';
+    const tokenYType =
+      '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC';
+    const amount = 2000000000000;
+    const route = await routeModule.fetchRoute(tokenXType, tokenYType, amount, pools, tokens);
+    expect(route).toBeDefined();
+  }, 30000);
+
+  it('positive SUI/USDC pass pools and tokens - Input amount is too small', async () => {
+    const pools = await sdk.Pool.getAllPools();
+    const tokens = await sdk.Pool.getAllTokens();
+    const tokenXType =
+      '0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI';
+    const tokenYType =
+      '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC';
+    const amount = 0.0000002;
+    const route = await routeModule.fetchRoute(tokenXType, tokenYType, amount, pools, tokens);
+    expect(route).toBeDefined();
+  }, 30000);
+
   it('negative SUI/USDC pass wrong tokens', async () => {
     const pools = await sdk.Pool.getAllPools();
     const tokens = await sdk.Pool.getAllTokens();
