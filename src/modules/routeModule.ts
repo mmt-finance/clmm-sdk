@@ -25,6 +25,10 @@ export class RouteModule implements BaseModule {
     extendedPools?: ExtendedPoolWithApr[],
     tokens?: TokenSchema[],
   ) {
+    if (amount <= 0n) {
+      return null;
+    }
+
     if (!extendedPools?.length) {
       extendedPools = await this._sdk.Pool.getAllPools();
     }
