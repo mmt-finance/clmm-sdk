@@ -46,7 +46,7 @@ export class RouteModule implements BaseModule {
         tvl: pool.tvl,
       }));
 
-    const pathResults = await this.getRoutes(sourceToken, targetToken, pools);
+    const pathResults = this.getRoutes(sourceToken, targetToken, pools);
     if (!pathResults) {
       console.error('No paths found:', sourceToken, targetToken);
       return null;
@@ -73,7 +73,7 @@ export class RouteModule implements BaseModule {
     return best.pools;
   }
 
-  private async getRoutes(sourceToken: string, targetToken: string, pools: PoolTokenType[]) {
+  private getRoutes(sourceToken: string, targetToken: string, pools: PoolTokenType[]) {
     const graph = new Graph(false);
     const vertexMap = new Map<string, GraphVertex>();
     const tokenRepeatTracker = new Map<string, number>();

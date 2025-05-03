@@ -132,8 +132,8 @@ export async function fetchTickLiquidityApi(
     mergedHeaders,
     body: null as null | string,
   };
-
-  const response = await fetch(`${baseUrl}/tickLiquidity/${poolId}`, options);
+  const url = `${baseUrl}/tickLiquidity/${poolId}?limit=${limit}&offset=${offset}`;
+  const response = await fetch(url, options);
   if (!response.ok) {
     throw new Error(`Request failed with status ${response.status}`);
   }
