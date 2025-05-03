@@ -25,4 +25,6 @@ export const MIN_SQRT_PRICE = '4295048016';
 
 export const FEE_RATE_DENOMINATOR = new BN(1_000_000);
 
-export const DRY_RUN_PATH_LEN = 10;
+export const DRY_RUN_PATH_LEN = 5;
+
+export const U64_MAX = BigInt('18446744073709551615');

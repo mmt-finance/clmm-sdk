@@ -5,7 +5,7 @@ import { bcs } from '@mysten/sui/bcs';
 import { BaseModule } from '../interfaces/BaseModule';
 import { MmtSDK } from '../sdk';
 import { Graph, GraphVertex, GraphEdge } from '@syntsugar/cc-graph';
-import { DRY_RUN_PATH_LEN } from '../utils/constants';
+import { DRY_RUN_PATH_LEN, U64_MAX } from '../utils/constants';
 
 export class RouteModule implements BaseModule {
   protected _sdk: MmtSDK;
@@ -25,6 +25,10 @@ export class RouteModule implements BaseModule {
     extendedPools?: ExtendedPoolWithApr[],
     tokens?: TokenSchema[],
   ) {
+    if (amount <= 0n) {
+      return null;
+    }
+
     if (!extendedPools?.length) {
       extendedPools = await this._sdk.Pool.getAllPools();
     }
@@ -46,23 +50,29 @@ export class RouteModule implements BaseModule {
         tvl: pool.tvl,
       }));
 
-    const pathResults = await this.getRoutes(sourceToken, targetToken, pools);
+    const pathResults = this.getRoutes(sourceToken, targetToken, pools);
     if (!pathResults) {
       console.error('No paths found:', sourceToken, targetToken);
       return null;
     }
 
-    const best = await this.devRunSwapAndChooseBestRoute(
-      pathResults,
-      pools,
-      amount,
-      sourceTokenSchema.decimals,
-    );
-    if (!best) throw new Error('No path found');
+    const best = await this.devRunSwapAndChooseBestRoute(pathResults, pools, amount);
+    if (!best) {
+      console.info(
+        'No valid swap paths found:',
+        'sourceToken:',
+        sourceToken,
+        'targetToken:',
+        targetToken,
+        'amount:',
+        amount,
+      );
+      return null;
+    }
     return best.pools;
   }
 
-  private async getRoutes(sourceToken: string, targetToken: string, pools: PoolTokenType[]) {
+  private getRoutes(sourceToken: string, targetToken: string, pools: PoolTokenType[]) {
     const graph = new Graph(false);
     const vertexMap = new Map<string, GraphVertex>();
     const tokenRepeatTracker = new Map<string, number>();
@@ -214,18 +224,12 @@ export class RouteModule implements BaseModule {
     paths: PathResult[],
     pools: PoolTokenType[],
     sourceAmount: bigint,
-    sourceDecimals: number,
   ) {
     const tasks = paths.map(async (path) => {
-      try {
-        const tx = new Transaction();
-        const sourceAmountIn = tx.pure.u64(Number(sourceAmount) * 10 ** sourceDecimals);
-        const output = await this.dryRunSwap(tx, path, pools, sourceAmountIn);
-        return { path, output };
-      } catch (err) {
-        console.warn(`Dry run failed on path:`, path, err);
-        return null;
-      }
+      const tx = new Transaction();
+      const amountIn = sourceAmount > U64_MAX ? U64_MAX : sourceAmount;
+      const output = await this.dryRunSwap(tx, path, pools, tx.pure.u64(amountIn.toString()));
+      return { path, output };
     });
     const results = await Promise.all(tasks);
     const validResults = results.filter(
@@ -292,7 +296,7 @@ export class RouteModule implements BaseModule {
       });
 
       if (res.error || res.effects?.status.status !== 'success') {
-        console.error(`Dry run failed: ${res.error || 'Unknown failure'}`);
+        console.info(`Dry run failed: ${res.error || 'Unknown failure'}`);
         return 0n;
       }
 
@@ -305,7 +309,7 @@ export class RouteModule implements BaseModule {
       const amountOutParsed = bcs.u64().parse(new Uint8Array(amountOut));
       return BigInt(amountOutParsed);
     } catch (err) {
-      console.error('Error in dry run swap:', err);
+      console.info('Error in dry run swap:', err);
       return 0n;
     }
   }
