@@ -1,7 +1,5 @@
 import { MmtSDK } from '../src';
 import { describe, it, beforeEach, expect } from '@jest/globals';
-import { DryRunTransactionBlockResponse } from '@mysten/sui/client';
-import { fetchUserObjectsByPkg } from '../src/utils/poolUtils';
 import ALL_POOL_DATA from './__test_data__/all-pools.json';
 
 describe('RouteModule', () => {
@@ -24,7 +22,6 @@ describe('RouteModule', () => {
     const tokenYType =
       '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC';
     const amount = BigInt(Math.floor(2 * 10 ** 9));
-
     expect(await routeModule.fetchRoute(tokenXType, tokenYType, amount)).toBeDefined();
   }, 30000);
 
