@@ -176,6 +176,13 @@ export interface PoolTokenType {
   tvl: string;
 }
 
+export interface PreSwapParam {
+  tokenXType: string;
+  tokenYType: string;
+  poolId: string;
+  isXtoY: boolean;
+}
+
 export interface PathResult {
   tokens: string[];
   pools: string[];

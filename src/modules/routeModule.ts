@@ -1,4 +1,10 @@
-import { ExtendedPoolWithApr, PathResult, PoolTokenType, TokenSchema } from '../types';
+import {
+  ExtendedPoolWithApr,
+  PathResult,
+  PoolTokenType,
+  PreSwapParam,
+  TokenSchema,
+} from '../types';
 import { Transaction } from '@mysten/sui/transactions';
 import { normalizeSuiAddress } from '@mysten/sui/utils';
 import { bcs } from '@mysten/sui/bcs';
@@ -228,7 +234,12 @@ export class RouteModule implements BaseModule {
     const tasks = paths.map(async (path) => {
       const tx = new Transaction();
       const amountIn = sourceAmount > U64_MAX ? U64_MAX : sourceAmount;
-      const output = await this.dryRunSwap(tx, path, pools, tx.pure.u64(amountIn.toString()));
+      let output = 0n;
+      try {
+        output = await this.dryRunSwap(tx, path, pools, amountIn.toString());
+      } catch (err) {
+        console.info('Error in dry run swap:', err);
+      }
       return { path, output };
     });
     const results = await Promise.all(tasks);
@@ -255,62 +266,21 @@ export class RouteModule implements BaseModule {
     pools: PoolTokenType[],
     sourceAmount: any,
   ) {
-    try {
-      const swapDirectionMap = new Map<string, boolean>();
-      pathResult.pools.forEach((poolId, index) => {
-        const direction = pathResult.isXToY[index];
-        swapDirectionMap.set(poolId, direction);
+    const preSwapParams: PreSwapParam[] = [];
+
+    for (let i = 0; i < pathResult.pools.length; i++) {
+      const poolId = pathResult.pools[i];
+      const isXtoY = pathResult.isXToY?.[i] ?? true;
+
+      const pool = pools.find((p) => p.poolId === poolId);
+
+      preSwapParams.push({
+        tokenXType: pool.tokenXType,
+        tokenYType: pool.tokenYType,
+        poolId: pool.poolId,
+        isXtoY,
       });
-      let inputAmount = sourceAmount;
-
-      const LowLimitPrice = BigInt('4295048017');
-      const HighLimitPrice = BigInt('79226673515401279992447579050');
-
-      for (const poolId of pathResult.pools) {
-        const pool = pools.find((p) => p.poolId === poolId)!;
-        const { tokenXType, tokenYType } = pool;
-        const isXtoY = swapDirectionMap.get(poolId);
-
-        const swapResult = tx.moveCall({
-          target: `${this.sdk.PackageId}::trade::compute_swap_result`,
-          typeArguments: [tokenXType, tokenYType],
-          arguments: [
-            tx.object(poolId),
-            tx.pure.bool(isXtoY),
-            tx.pure.bool(true),
-            tx.pure.u128(isXtoY ? LowLimitPrice : HighLimitPrice),
-            inputAmount,
-          ],
-        });
-
-        inputAmount = tx.moveCall({
-          target: `${this.sdk.PackageId}::trade::get_state_amount_calculated`,
-          arguments: [swapResult],
-        });
-      }
-
-      const res = await this.sdk.rpcClient.devInspectTransactionBlock({
-        transactionBlock: tx,
-        sender: normalizeSuiAddress('0x0'),
-        additionalArgs: { showRawTxnDataAndEffects: true },
-      });
-
-      if (res.error || res.effects?.status.status !== 'success') {
-        console.info(`Dry run failed: ${res.error || 'Unknown failure'}`);
-        return 0n;
-      }
-
-      const lastIndex = 2 * (pathResult.pools.length - 1) + 1;
-      const amountOut = res.results?.[lastIndex]?.returnValues?.[0]?.[0];
-
-      if (!amountOut) {
-        return 0n;
-      }
-      const amountOutParsed = bcs.u64().parse(new Uint8Array(amountOut));
-      return BigInt(amountOutParsed);
-    } catch (err) {
-      console.info('Error in dry run swap:', err);
-      return 0n;
     }
+    return this.sdk.Pool.preSwap(tx, preSwapParams, sourceAmount);
   }
 }
