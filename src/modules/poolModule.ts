@@ -11,12 +11,12 @@ import {
   Rewarder,
   TokenSchema,
   ExtendedPoolWithApr,
-  PoolTokenType,
+  PreSwapParam,
 } from '../types';
 import { MmtSDK } from '../sdk';
 import { BaseModule } from '../interfaces/BaseModule';
 import { txnArgument } from '../utils/common';
-import { normalizeSuiObjectId, parseStructTag } from '@mysten/sui/utils';
+import { normalizeSuiAddress, normalizeSuiObjectId, parseStructTag } from '@mysten/sui/utils';
 import { SuiObjectResponse } from '@mysten/sui/client';
 import {
   estLiquidityAndcoinAmountFromOneAmounts,
@@ -33,6 +33,7 @@ import BN from 'bn.js';
 import Decimal from 'decimal.js';
 import { convertI32ToSigned, TickMath } from '../utils/math/tickMath';
 import { MathUtil } from '../utils/math/commonMath';
+import { bcs } from '@mysten/sui/bcs';
 
 export const Q_64 = '18446744073709551616';
 export class PoolModule implements BaseModule {
@@ -1020,6 +1021,55 @@ export class PoolModule implements BaseModule {
       console.error('Error getting rewards apy.');
       console.error(e);
     }
+  }
+
+  public async preSwap(tx: Transaction, pools: PreSwapParam[], sourceAmount: any) {
+    let inputAmount = tx.pure.u64(sourceAmount.toString());
+
+    const LowLimitPrice = BigInt('4295048017');
+    const HighLimitPrice = BigInt('79226673515401279992447579050');
+
+    for (const pool of pools) {
+      const { tokenXType, tokenYType } = pool;
+      const isXtoY = pool.isXtoY;
+
+      const swapResult = tx.moveCall({
+        target: `${this.sdk.PackageId}::trade::compute_swap_result`,
+        typeArguments: [tokenXType, tokenYType],
+        arguments: [
+          tx.object(pool.poolId),
+          tx.pure.bool(isXtoY),
+          tx.pure.bool(true),
+          tx.pure.u128(isXtoY ? LowLimitPrice : HighLimitPrice),
+          inputAmount,
+        ],
+      });
+
+      inputAmount = tx.moveCall({
+        target: `${this.sdk.PackageId}::trade::get_state_amount_calculated`,
+        arguments: [swapResult],
+      });
+    }
+
+    const res = await this.sdk.rpcClient.devInspectTransactionBlock({
+      transactionBlock: tx,
+      sender: normalizeSuiAddress('0x0'),
+      additionalArgs: { showRawTxnDataAndEffects: true },
+    });
+
+    if (res.error || res.effects?.status.status !== 'success') {
+      console.info(`Dry run failed: ${res.error || 'Unknown failure'}`);
+      return 0n;
+    }
+
+    const lastIndex = 2 * (pools.length - 1) + 1;
+    const amountOut = res.results?.[lastIndex]?.returnValues?.[0]?.[0];
+
+    if (!amountOut) {
+      return 0n;
+    }
+    const amountOutParsed = bcs.u64().parse(new Uint8Array(amountOut));
+    return BigInt(amountOutParsed);
   }
 
   private getStablePoolAPR(
