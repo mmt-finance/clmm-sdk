@@ -75,7 +75,7 @@ export class RouteModule implements BaseModule {
       );
       return null;
     }
-    return best.pools;
+    return best;
   }
 
   private getRoutes(sourceToken: string, targetToken: string, pools: PoolTokenType[]) {
@@ -252,12 +252,11 @@ export class RouteModule implements BaseModule {
       return null;
     }
 
-    const best = validResults.reduce(
-      (max, current) => (current.output > max.output ? current : max),
-      { path: null, output: BigInt(0) } as { path: PathResult | null; output: bigint },
+    const best = validResults.reduce((max, current) =>
+      current.output > max.output ? current : max,
     );
 
-    return best.path;
+    return { path: best.path.pools, output: best.output };
   }
 
   private async dryRunSwap(

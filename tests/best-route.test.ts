@@ -22,7 +22,8 @@ describe('RouteModule', () => {
     const tokenYType =
       '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC';
     const amount = BigInt(Math.floor(2 * 10 ** 9));
-    expect(await routeModule.fetchRoute(tokenXType, tokenYType, amount)).toBeDefined();
+    const route = await routeModule.fetchRoute(tokenXType, tokenYType, amount);
+    expect(route).toBeDefined();
   }, 30000);
 
   it('positive SUI/USDC pass pools and tokens', async () => {
@@ -63,7 +64,7 @@ describe('RouteModule', () => {
     const tokenX = tokens.filter((token) => token.coinType === tokenXType);
     const amount = BigInt(Math.floor(0.0000002 * 10 ** tokenX[0].decimals));
     const route = await routeModule.fetchRoute(tokenXType, tokenYType, amount, pools, tokens);
-    expect(route).toBeNull();
+    expect(route.output).toEqual(0n);
   }, 30000);
 
   it('negative SUI/USDC pass wrong tokens', async () => {
