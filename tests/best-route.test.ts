@@ -24,6 +24,7 @@ describe('RouteModule', () => {
     const amount = BigInt(Math.floor(2 * 10 ** 9));
     const route = await routeModule.fetchRoute(tokenXType, tokenYType, amount);
     expect(route).toBeDefined();
+    expect(route.output).toBeGreaterThan(0n);
   }, 30000);
 
   it('positive SUI/USDC pass pools and tokens', async () => {
