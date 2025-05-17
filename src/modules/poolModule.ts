@@ -827,6 +827,23 @@ export class PoolModule implements BaseModule {
     coinBPriceStr: string,
     poolRewarders: any[],
   ) {
+    console.log(
+      '[estPositionAPRWithDeltaMethod] currentTickIndex=%s, lowerTickIndex=%s, upperTickIndex=%s, currentSqrtPriceX64=%s, poolLiquidity=%s, decimalsA=%s, decimalsB=%s, feeRate=%s, amountAStr=%s, amountBStr=%s, swapVolumeStr=%s, coinAPriceStr=%s, coinBPriceStr=%s, poolRewarders.length=%s',
+      currentTickIndex,
+      lowerTickIndex,
+      upperTickIndex,
+      currentSqrtPriceX64.toString(),
+      poolLiquidity.toString(),
+      decimalsA,
+      decimalsB,
+      feeRate,
+      amountAStr,
+      amountBStr,
+      swapVolumeStr,
+      coinAPriceStr,
+      coinBPriceStr,
+      poolRewarders.length,
+    );
     const rewarderApr = [];
     const amountA = new Decimal(amountAStr);
     const amountB = new Decimal(amountBStr);
@@ -883,10 +900,22 @@ export class PoolModule implements BaseModule {
           .div(posValidTVL)
           .mul(new Decimal(365));
 
+    console.log('📊 feeAPR parameters:', {
+      deltaLiquidity: deltaLiquidity.toString(),
+      feeRate: feeRate.toString?.() ?? feeRate,
+      swapVolume: swapVolume.toString?.() ?? swapVolume,
+      poolLiquidity: poolLiquidity.toString(),
+      posValidTVL: posValidTVL.toString(),
+      fraction: new Decimal(deltaLiquidity.toString())
+        .div(new Decimal(poolLiquidity.toString()).add(new Decimal(deltaLiquidity.toString())))
+        .toString(),
+    });
+
     poolRewarders?.map((item) => {
       if (item.hasEnded) return;
       const rewarderDecimals = item.rewardsDecimal;
-      const amountPerDay = new Decimal(item.flowRate)
+      console.log('item:', item);
+      const amountPerDay = new Decimal(item.flow_rate)
         .div(new Decimal('18446744073709551616'))
         .mul(86400)
         .div(new Decimal(10 ** rewarderDecimals));
@@ -1070,6 +1099,61 @@ export class PoolModule implements BaseModule {
     }
     const amountOutParsed = bcs.u64().parse(new Uint8Array(amountOut));
     return BigInt(amountOutParsed);
+  }
+
+  public async preSwapSingle(
+    tx: Transaction,
+    pool: PreSwapParam,
+    sourceAmounts: bigint[],
+  ): Promise<bigint[]> {
+    const { tokenXType, tokenYType, isXtoY, poolId } = pool;
+    const LowLimitPrice = BigInt('4295048017');
+    const HighLimitPrice = BigInt('79226673515401279992447579050');
+
+    const results: bigint[] = [];
+
+    for (let i = 0; i < sourceAmounts.length; i++) {
+      const inputAmount = tx.pure.u64(sourceAmounts[i].toString());
+
+      const swapResult = tx.moveCall({
+        target: `${this.sdk.PackageId}::trade::compute_swap_result`,
+        typeArguments: [tokenXType, tokenYType],
+        arguments: [
+          tx.object(poolId),
+          tx.pure.bool(isXtoY),
+          tx.pure.bool(true),
+          tx.pure.u128(isXtoY ? LowLimitPrice : HighLimitPrice),
+          inputAmount,
+        ],
+      });
+
+      const outputAmount = tx.moveCall({
+        target: `${this.sdk.PackageId}::trade::get_state_amount_calculated`,
+        arguments: [swapResult],
+      });
+
+      const res = await this.sdk.rpcClient.devInspectTransactionBlock({
+        transactionBlock: tx,
+        sender: normalizeSuiAddress('0x0'),
+        additionalArgs: { showRawTxnDataAndEffects: true },
+      });
+
+      if (res.error || res.effects?.status.status !== 'success') {
+        console.info(
+          `Dry run failed for amount ${sourceAmounts[i]}: ${res.error || 'Unknown failure'}`,
+        );
+        results.push(0n);
+        continue;
+      }
+
+      const lastIndex = i * 2 + 1;
+      const returnVal = res.results?.[lastIndex]?.returnValues?.[0]?.[0];
+      const parsed = returnVal ? BigInt(bcs.u64().parse(new Uint8Array(returnVal))) : 0n;
+
+      results.push(parsed);
+    }
+
+    return results;
   }
 
   private getStablePoolAPR(

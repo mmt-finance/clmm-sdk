@@ -44,4 +44,46 @@ describe('poolModule.preSwap', () => {
     );
     expect(outAmount).toBeDefined();
   }, 30000);
+
+  it('positive AUSD/USDC', async () => {
+    const amount = BigInt(Math.floor(10000 * 10 ** 6));
+    const tx = new Transaction();
+    const outAmount = await poolModule.preSwap(
+      tx,
+      [
+        {
+          poolId: '0x900f25b27d2b1686886277d763223988d802f3b6152d02872c382d4dce05e25b',
+          tokenXType:
+            '0x2053d08c1e2bd02791056171aab0fd12bd7cd7efad2ab8f6b9c8902f14df2ff2::ausd::AUSD',
+          tokenYType:
+            '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC',
+          isXtoY: true,
+        },
+      ],
+      amount,
+    );
+    console.log(outAmount);
+    expect(outAmount).toBeDefined();
+  }, 30000);
+
+  it('positive AUSD/USDC', async () => {
+    const amount = BigInt(Math.floor(10000 * 10 ** 6));
+    const amount1 = BigInt(Math.floor(100000 * 10 ** 6));
+    const tx = new Transaction();
+    const outAmount = await poolModule.preSwapSingle(
+      tx,
+
+      {
+        poolId: '0x900f25b27d2b1686886277d763223988d802f3b6152d02872c382d4dce05e25b',
+        tokenXType:
+          '0x2053d08c1e2bd02791056171aab0fd12bd7cd7efad2ab8f6b9c8902f14df2ff2::ausd::AUSD',
+        tokenYType:
+          '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC',
+        isXtoY: true,
+      },
+      [amount, amount1],
+    );
+    console.log(outAmount);
+    expect(outAmount).toBeDefined();
+  }, 30000);
 });

@@ -249,8 +249,25 @@ export class PositionModule implements BaseModule {
             false,
           );
 
-          const calculateUsdValue = (amount: number, coinType: string) =>
-            (amount / 10 ** pool[coinType].decimals) * tokenPriceMap.get(pool[coinType].coinType);
+          console.log('pool data', pool);
+          // console.log(
+          //   'sui price',
+          //   tokenPriceMap.get(
+          //     pool['0x455cf8d2ac91e7cb883f515874af750ed3cd18195c970b7a2d46235ac2b0c388'].coinType,
+          //   ),
+          // );
+
+          const calculateUsdValue = (amount: number, coinType: string) => {
+            console.log('coinType:', coinType);
+            console.log('pool[coinType].coinType:', pool[coinType].coinType);
+            console.log(
+              'tokenPriceMap.get(pool[coinType].coinType):',
+              tokenPriceMap.get(pool[coinType].coinType),
+            );
+            return (
+              (amount / 10 ** pool[coinType].decimals) * tokenPriceMap.get(pool[coinType].coinType)
+            );
+          };
 
           const totalUsdValue =
             calculateUsdValue(Number(coinA), 'tokenX') + calculateUsdValue(Number(coinB), 'tokenY');

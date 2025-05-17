@@ -17,13 +17,13 @@ describe('PoolModule.collectAllPoolsRewards', () => {
     });
     poolModule = sdk.Pool;
 
-    jest
-      .spyOn(require('../src/utils/poolUtils'), 'fetchAllPoolsApi')
-      .mockResolvedValue(ALL_POOL_DATA);
-
-    jest
-      .spyOn(require('../src/utils/poolUtils'), 'fetchAllTokenApi')
-      .mockResolvedValue(ALL_TOKEN_DATA);
+    // jest
+    //   .spyOn(require('../src/utils/poolUtils'), 'fetchAllPoolsApi')
+    //   .mockResolvedValue(ALL_POOL_DATA);
+    //
+    // jest
+    //   .spyOn(require('../src/utils/poolUtils'), 'fetchAllTokenApi')
+    //   .mockResolvedValue(ALL_TOKEN_DATA);
   });
 
   it('test stable apr', async () => {
@@ -42,12 +42,32 @@ describe('PoolModule.collectAllPoolsRewards', () => {
 
   it('position apr should be defined', async () => {
     const userPositions = await sdk.Position.getAllUserPositions(
-      '0x396c8d5f9560f2ffa5d67dcdf3f458ee654ad3e3e08d4eb6ff50e7ddf66a82e5',
+      '0xf875fb579a805c15890da3d75c5d1b18c933decbcf166e020fd67acdfb3822bf',
     );
     for (const position of userPositions) {
+      console.log('position:', position);
+      // console.log('x fee', position.feeAmountXUsd);
+      // console.log('y fee', position.feeAmountYUsd);
+      // console.log('fee pool', position.poolId);
+      if (position.status !== 'In Range') {
+        continue;
+      }
+      console.log('position.liquidity:', position.liquidity.toNumber());
       const pool = await sdk.Pool.getPool(position.poolId, undefined, false);
-      const lowerSqrtPrice = TickMath.tickIndexToSqrtPriceX64(position.lowerTick);
-      const upperSqrtPrice = TickMath.tickIndexToSqrtPriceX64(position.upperTick);
+      const lowerSqrtPrice = TickMath.priceToSqrtPriceX64(
+        new Decimal(position.lowerPrice),
+        pool.tokenX.decimals,
+        pool.tokenY.decimals,
+      );
+
+      const upperSqrtPrice = TickMath.priceToSqrtPriceX64(
+        new Decimal(position.upperPrice),
+        pool.tokenX.decimals,
+        pool.tokenY.decimals,
+      );
+      // position.upperPrice;
+      // const lowerSqrtPrice = TickMath.tickIndexToSqrtPriceX64(position.lowerTick);
+      // const upperSqrtPrice = TickMath.tickIndexToSqrtPriceX64(position.upperTick);
       const tokenXDecimals = pool.tokenX.decimals;
       const tokenYDecimals = pool.tokenY.decimals;
       const pool_lower_tick_index = convertI32ToSigned(
@@ -66,6 +86,9 @@ describe('PoolModule.collectAllPoolsRewards', () => {
           pool.tickSpacing,
         ),
       );
+      console.log('11111');
+      console.log('lowerSqrtPrice', lowerSqrtPrice);
+      console.log('lowerSqrtPrice', upperSqrtPrice);
       const liquidityAmounts = getCoinAmountFromLiquidity(
         new BN(position.liquidity),
         new BN(pool.currentSqrtPrice!),
@@ -73,6 +96,9 @@ describe('PoolModule.collectAllPoolsRewards', () => {
         upperSqrtPrice,
         true,
       );
+      console.log('pool.poolId', pool.poolId);
+      console.log('pool.volume24h', pool.volume24h);
+      console.log('pool.rewarders:', pool.rewarders);
       const aprData = await sdk.Pool.estPositionAPRWithDeltaMethod(
         convertI32ToSigned(Number(pool.currentTickIndex)),
         pool_lower_tick_index,
@@ -89,7 +115,8 @@ describe('PoolModule.collectAllPoolsRewards', () => {
         pool.tokenY.price.toString(),
         pool.rewarders,
       );
+      console.log('aprData:', aprData);
       expect(aprData.feeAPR).toBeDefined();
     }
-  });
+  }, 30000);
 });

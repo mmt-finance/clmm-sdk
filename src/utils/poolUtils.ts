@@ -175,6 +175,14 @@ export function getCoinAmountFromLiquidity(
   coinA: BN;
   coinB: BN;
 } {
+  console.log(
+    '[getCoinAmountFromLiquidity] liquidity=%s, curSqrtPrice=%s, lowerSqrtPrice=%s, upperSqrtPrice=%s, roundUp=%s',
+    liquidity.toString(),
+    curSqrtPrice.toString(),
+    lowerSqrtPrice.toString(),
+    upperSqrtPrice.toString(),
+    roundUp,
+  );
   const liq = new Decimal(liquidity.toString());
   const curSqrtPriceStr = new Decimal(curSqrtPrice.toString());
   const lowerPriceStr = new Decimal(lowerSqrtPrice.toString());
