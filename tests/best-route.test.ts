@@ -36,9 +36,8 @@ describe('RouteModule', () => {
       '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC';
     const tokenX = tokens.filter((token) => token.coinType === tokenXType);
     const amount = BigInt(Math.floor(2 * 10 ** tokenX[0].decimals));
-    expect(
-      await routeModule.fetchRoute(tokenXType, tokenYType, amount, pools, tokens),
-    ).toBeDefined();
+    const route = await routeModule.fetchRoute(tokenXType, tokenYType, amount, pools, tokens);
+    expect(route).toBeDefined();
   }, 30000);
 
   it('positive SUI/USDC pass pools and tokens - Input amount is too large', async () => {
@@ -105,8 +104,8 @@ describe('RouteModule', () => {
     const tokenYType =
       '0x356a26eb9e012a68958082340d4c4116e7f55615cf27affcff209cf0ae544f59::wal::WAL';
     const amount = BigInt(Math.floor(2 * 10 ** 9));
-
-    expect(await routeModule.fetchRoute(tokenXType, tokenYType, amount)).toBeDefined();
+    const route = await routeModule.fetchRoute(tokenXType, tokenYType, amount);
+    expect(route).toBeDefined();
   }, 30000);
 
   it('positive STSUI/WAL', async () => {
@@ -115,8 +114,8 @@ describe('RouteModule', () => {
     const tokenYType =
       '0x356a26eb9e012a68958082340d4c4116e7f55615cf27affcff209cf0ae544f59::wal::WAL';
     const amount = BigInt(Math.floor(2 * 10 ** 9));
-
-    expect(await routeModule.fetchRoute(tokenXType, tokenYType, amount)).toBeDefined();
+    const route = await routeModule.fetchRoute(tokenXType, tokenYType, amount);
+    expect(route).toBeDefined();
   }, 30000);
 
   it('negative', async () => {

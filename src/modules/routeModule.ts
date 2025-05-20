@@ -226,60 +226,99 @@ export class RouteModule implements BaseModule {
     });
   }
 
-  private async devRunSwapAndChooseBestRoute(
+  public async devRunSwapAndChooseBestRoute(
     paths: PathResult[],
     pools: PoolTokenType[],
     sourceAmount: bigint,
   ) {
-    const tasks = paths.map(async (path) => {
-      const tx = new Transaction();
-      const amountIn = sourceAmount > U64_MAX ? U64_MAX : sourceAmount;
-      let output = 0n;
-      try {
-        output = await this.dryRunSwap(tx, path, pools, amountIn.toString());
-      } catch (err) {
-        console.info('Error in dry run swap:', err);
-      }
-      return { path, output };
-    });
-    const results = await Promise.all(tasks);
-    const validResults = results.filter(
-      (r): r is { path: PathResult; output: bigint } => r !== null,
-    );
+    const tx = new Transaction();
+    const amountIn = sourceAmount > U64_MAX ? U64_MAX : sourceAmount;
 
-    if (validResults.length === 0) {
+    const pathResults: {
+      path: PathResult;
+      numCalls: number;
+    }[] = [];
+
+    for (const path of paths) {
+      const preSwapParams: PreSwapParam[] = [];
+
+      for (let i = 0; i < path.pools.length; i++) {
+        const poolId = path.pools[i];
+        const isXtoY = path.isXToY?.[i] ?? true;
+        const pool = pools.find((p) => p.poolId === poolId);
+
+        preSwapParams.push({
+          tokenXType: pool.tokenXType,
+          tokenYType: pool.tokenYType,
+          poolId: pool.poolId,
+          isXtoY,
+        });
+      }
+
+      this.attachPreSwap(tx, preSwapParams, amountIn);
+      const numCalls = preSwapParams.length * 2;
+      pathResults.push({ path, numCalls });
+    }
+
+    const res = await this.sdk.rpcClient.devInspectTransactionBlock({
+      transactionBlock: tx,
+      sender: normalizeSuiAddress('0x0'),
+      additionalArgs: { showRawTxnDataAndEffects: true },
+    });
+
+    if (res.error || res.effects?.status.status !== 'success') {
+      console.warn('Dry run failed:', res.error);
+      return null;
+    }
+
+    const results: { path: PathResult; output: bigint }[] = [];
+
+    let callIndex = 0;
+
+    for (const { path, numCalls } of pathResults) {
+      const returnData = res.results?.[callIndex + numCalls - 1]?.returnValues?.[0]?.[0];
+      if (returnData) {
+        const parsed = bcs.u64().parse(new Uint8Array(returnData));
+        results.push({ path, output: BigInt(parsed) });
+      }
+      callIndex += numCalls;
+    }
+
+    if (results.length === 0) {
       console.warn('No valid swap paths found.');
       return null;
     }
 
-    const best = validResults.reduce((max, current) =>
-      current.output > max.output ? current : max,
-    );
+    const best = results.reduce((max, current) => (current.output > max.output ? current : max));
 
     return { path: best.path.pools, output: best.output };
   }
 
-  private async dryRunSwap(
-    tx: Transaction,
-    pathResult: PathResult,
-    pools: PoolTokenType[],
-    sourceAmount: any,
-  ) {
-    const preSwapParams: PreSwapParam[] = [];
+  private attachPreSwap(tx: Transaction, pools: PreSwapParam[], sourceAmount: bigint) {
+    let inputAmount = tx.pure.u64(sourceAmount.toString());
 
-    for (let i = 0; i < pathResult.pools.length; i++) {
-      const poolId = pathResult.pools[i];
-      const isXtoY = pathResult.isXToY?.[i] ?? true;
+    const LowLimitPrice = BigInt('4295048017');
+    const HighLimitPrice = BigInt('79226673515401279992447579050');
 
-      const pool = pools.find((p) => p.poolId === poolId);
+    for (const pool of pools) {
+      const { tokenXType, tokenYType, isXtoY, poolId } = pool;
 
-      preSwapParams.push({
-        tokenXType: pool.tokenXType,
-        tokenYType: pool.tokenYType,
-        poolId: pool.poolId,
-        isXtoY,
+      const swapResult = tx.moveCall({
+        target: `${this.sdk.PackageId}::trade::compute_swap_result`,
+        typeArguments: [tokenXType, tokenYType],
+        arguments: [
+          tx.object(poolId),
+          tx.pure.bool(isXtoY),
+          tx.pure.bool(true),
+          tx.pure.u128(isXtoY ? LowLimitPrice : HighLimitPrice),
+          inputAmount,
+        ],
+      });
+
+      inputAmount = tx.moveCall({
+        target: `${this.sdk.PackageId}::trade::get_state_amount_calculated`,
+        arguments: [swapResult],
       });
     }
-    return this.sdk.Pool.preSwap(tx, preSwapParams, sourceAmount);
   }
 }
