@@ -313,75 +313,78 @@ export class PositionModule implements BaseModule {
     address: string,
     client: SuiClient,
   ) {
-    const txb = new Transaction();
-    positions.map((position: any) => {
-      const positionData = position.fields;
-      const pos_id = positionData.id.id;
-      const pool_id = positionData.pool_id;
-      const pool = pools.find((pool) => pool.poolId === pool_id);
-      const poolModel: PoolParams = {
-        objectId: pool_id,
-        tokenXType: pool.tokenXType,
-        tokenYType: pool.tokenYType,
-      };
-      const rewarders = pool.rewarders;
+    const allRewards: Record<string, RewardsData> = {};
+    const batchSize = 100;
+    for (let i = 0; i < positions.length; i += batchSize) {
+      const batch = positions.slice(i, i + batchSize);
+      const txb = new Transaction();
+      for (const position of batch) {
+        const positionData = position.fields;
+        const pos_id = positionData.id.id;
+        const pool_id = positionData.pool_id;
+        const pool = pools.find((pool) => pool.poolId === pool_id);
+        const poolModel: PoolParams = {
+          objectId: pool_id,
+          tokenXType: pool.tokenXType,
+          tokenYType: pool.tokenYType,
+        };
+        const rewarders = pool.rewarders;
 
-      if (rewarders?.length > 0) {
-        this.sdk.Pool.collectAllRewards(txb, poolModel, rewarders, pos_id, address);
+        if (rewarders?.length > 0) {
+          this.sdk.Pool.collectAllRewards(txb, poolModel, rewarders, pos_id, address);
+        }
+
+        this.sdk.Pool.collectFee(txb, poolModel, pos_id, address);
       }
 
-      this.sdk.Pool.collectFee(txb, poolModel, pos_id, address);
-    });
+      const res = await client.devInspectTransactionBlock({
+        transactionBlock: txb,
+        sender: address,
+      });
 
-    const res = await client.devInspectTransactionBlock({
-      transactionBlock: txb,
-      sender: address,
-    });
-
-    const positionRewardsData: Record<string, RewardsData> = {};
-
-    for (const event of res.events) {
-      const { type, parsedJson } = event;
-      if (type === `${this.sdk.contractConst.publishedAt}::collect::CollectPoolRewardEvent`) {
-        const { reward_coin_type, amount, position_id } = parsedJson as any;
-        if (positionRewardsData[position_id]) {
-          positionRewardsData[position_id].rewards.push({
-            coinType: `0x${reward_coin_type.name}`,
-            amount: parseInt(amount),
-          });
-        } else {
-          positionRewardsData[position_id] = {
-            rewards: [
-              {
-                coinType: `0x${reward_coin_type.name}`,
-                amount: parseInt(amount),
+      for (const event of res.events) {
+        const { type, parsedJson } = event;
+        if (type === `${this.sdk.contractConst.publishedAt}::collect::CollectPoolRewardEvent`) {
+          const { reward_coin_type, amount, position_id } = parsedJson as any;
+          if (allRewards[position_id]) {
+            allRewards[position_id].rewards.push({
+              coinType: `0x${reward_coin_type.name}`,
+              amount: parseInt(amount),
+            });
+          } else {
+            allRewards[position_id] = {
+              rewards: [
+                {
+                  coinType: `0x${reward_coin_type.name}`,
+                  amount: parseInt(amount),
+                },
+              ],
+              feeCollected: {
+                amountX: 0,
+                amountY: 0,
               },
-            ],
-            feeCollected: {
-              amountX: 0,
-              amountY: 0,
-            },
-          };
-        }
-      } else if (type === `${this.sdk.contractConst.publishedAt}::collect::FeeCollectedEvent`) {
-        const { amount_x, amount_y, position_id } = parsedJson as any;
-        if (positionRewardsData[position_id]) {
-          positionRewardsData[position_id].feeCollected = {
-            amountX: parseInt(amount_x),
-            amountY: parseInt(amount_y),
-          };
-        } else {
-          positionRewardsData[position_id] = {
-            rewards: [],
-            feeCollected: {
+            };
+          }
+        } else if (type === `${this.sdk.contractConst.publishedAt}::collect::FeeCollectedEvent`) {
+          const { amount_x, amount_y, position_id } = parsedJson as any;
+          if (allRewards[position_id]) {
+            allRewards[position_id].feeCollected = {
               amountX: parseInt(amount_x),
               amountY: parseInt(amount_y),
-            },
-          };
+            };
+          } else {
+            allRewards[position_id] = {
+              rewards: [],
+              feeCollected: {
+                amountX: parseInt(amount_x),
+                amountY: parseInt(amount_y),
+              },
+            };
+          }
         }
       }
     }
-    return positionRewardsData;
+    return allRewards;
   }
 
   public async getCoinOwedReward(positionId: string | TransactionArgument, reward_index: number) {
