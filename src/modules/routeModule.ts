@@ -226,7 +226,7 @@ export class RouteModule implements BaseModule {
     });
   }
 
-  private async devRunSwapAndChooseBestRoute(
+  public async devRunSwapAndChooseBestRoute(
     paths: PathResult[],
     pools: PoolTokenType[],
     sourceAmount: bigint,
