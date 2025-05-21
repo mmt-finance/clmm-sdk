@@ -663,12 +663,12 @@ export class PoolModule implements BaseModule {
     }
 
     const tokens = await this.getAllTokens();
+    const filteredPools = pools.filter(
+      (p) => p.poolId !== '0x60714d9ee9474a101b76f49801b2f86bd0e1cd76c4b96f5ded39893c62678ab5',
+    );
 
     return Promise.all(
-      pools.map(async (pool) => {
-        if (pool.poolId == '0x60714d9ee9474a101b76f49801b2f86bd0e1cd76c4b96f5ded39893c62678ab5') {
-          return;
-        }
+      filteredPools.map(async (pool) => {
         const aprBreakdown = await this.calcRewardApr(pool, tokens);
         return {
           ...pool,
