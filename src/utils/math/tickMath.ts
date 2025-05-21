@@ -280,11 +280,22 @@ export class TickMath {
     );
   }
 
-  static sqrtPriceX64ToTickIndexWithTickSpacing(sqrtPriceX64: BN, tickSpacing: number): number {
-    if (sqrtPriceX64.gt(new BN(MAX_SQRT_PRICE)) || sqrtPriceX64.lt(new BN(MIN_SQRT_PRICE))) {
-      throw new Error('Provided sqrtPrice is not within the supported sqrtPrice range.');
-    }
+  static priceToTickIndexWithTickSpacingUnsafe(
+    price: Decimal,
+    decimalsA: number,
+    decimalsB: number,
+    tickSpacing: number,
+  ): number {
+    return TickMath.sqrtPriceX64ToTickIndexWithTickSpacingUnsafe(
+      TickMath.priceToSqrtPriceX64(price, decimalsA, decimalsB),
+      tickSpacing,
+    );
+  }
 
+  static sqrtPriceX64ToTickIndexWithTickSpacingUnsafe(
+    sqrtPriceX64: BN,
+    tickSpacing: number,
+  ): number {
     const msb = sqrtPriceX64.bitLength() - 1;
     const adjustedMsb = new BN(msb - 64);
     const log2pIntegerX32 = signedShiftLeft(adjustedMsb, 32, 128);
@@ -318,6 +329,13 @@ export class TickMath {
     const alignedTick = remainder === 0 ? tickHigh : tickHigh + (tickSpacing - remainder);
 
     return convertSignedToI32(alignedTick);
+  }
+
+  static sqrtPriceX64ToTickIndexWithTickSpacing(sqrtPriceX64: BN, tickSpacing: number): number {
+    if (sqrtPriceX64.gt(new BN(MAX_SQRT_PRICE)) || sqrtPriceX64.lt(new BN(MIN_SQRT_PRICE))) {
+      throw new Error('Provided sqrtPrice is not within the supported sqrtPrice range.');
+    }
+    return this.sqrtPriceX64ToTickIndexWithTickSpacingUnsafe(sqrtPriceX64, tickSpacing);
   }
 
   static tickIndexToSqrtPriceX64WithTickSpacing(
