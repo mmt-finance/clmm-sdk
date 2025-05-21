@@ -989,7 +989,7 @@ export class PoolModule implements BaseModule {
           pool?.tickSpacing,
         ),
       );
-      // const { coinXAmount: amountA, coinYAmount: amountB } = getCoinXYForLiquidity(new Decimal(0.1 * Number(pool?.liquidity)), new Decimal(pool?.token_x_reserve), new Decimal(pool?.token_y_reserve), new Decimal(pool?.liquidity))
+
       const { coinAmountA, coinAmountB } = estLiquidityAndcoinAmountFromOneAmounts(
         pool_lower_tick_index,
         pool_upper_tick_index,

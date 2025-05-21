@@ -286,13 +286,13 @@ export class TickMath {
     decimalsB: number,
     tickSpacing: number,
   ): number {
-    return TickMath.sqrtPriceX64ToTickIndexWithTickSpacingWithoutCheck(
+    return TickMath.sqrtPriceX64ToTickIndexWithTickSpacingUnsafe(
       TickMath.priceToSqrtPriceX64(price, decimalsA, decimalsB),
       tickSpacing,
     );
   }
 
-  static sqrtPriceX64ToTickIndexWithTickSpacingWithoutCheck(
+  static sqrtPriceX64ToTickIndexWithTickSpacingUnsafe(
     sqrtPriceX64: BN,
     tickSpacing: number,
   ): number {
@@ -335,7 +335,7 @@ export class TickMath {
     if (sqrtPriceX64.gt(new BN(MAX_SQRT_PRICE)) || sqrtPriceX64.lt(new BN(MIN_SQRT_PRICE))) {
       throw new Error('Provided sqrtPrice is not within the supported sqrtPrice range.');
     }
-    return this.sqrtPriceX64ToTickIndexWithTickSpacingWithoutCheck(sqrtPriceX64, tickSpacing);
+    return this.sqrtPriceX64ToTickIndexWithTickSpacingUnsafe(sqrtPriceX64, tickSpacing);
   }
 
   static tickIndexToSqrtPriceX64WithTickSpacing(
