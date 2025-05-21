@@ -663,12 +663,9 @@ export class PoolModule implements BaseModule {
     }
 
     const tokens = await this.getAllTokens();
-    const filteredPools = pools.filter(
-      (p) => p.poolId !== '0x60714d9ee9474a101b76f49801b2f86bd0e1cd76c4b96f5ded39893c62678ab5',
-    );
 
     return Promise.all(
-      filteredPools.map(async (pool) => {
+      pools.map(async (pool) => {
         const aprBreakdown = await this.calcRewardApr(pool, tokens);
         return {
           ...pool,
@@ -934,6 +931,12 @@ export class PoolModule implements BaseModule {
 
   public async getRewardsAPY(pool: ExtendedPool, tokensInput?: TokenSchema[]) {
     try {
+      if (pool.liquidity === '0') {
+        return {
+          feeAPR: '0',
+          rewarderApr: [],
+        };
+      }
       const rewarders = pool?.rewarders;
       const tokens = tokensInput || (await this.getAllTokens());
       const tokenA = tokens.find((token) => token.coinType === pool?.tokenXType);
@@ -971,7 +974,7 @@ export class PoolModule implements BaseModule {
         ).toNumber();
       // console.log(Math.floor((0.9 * Number(pool?.liquidity))).toString(), pool?.current_sqrt_price, TickMath.priceToSqrtPriceX64(new Decimal(lower_price), tokenA?.decimals, tokenB?.decimals).toString(), TickMath.priceToSqrtPriceX64(new Decimal(upper_price), tokenA?.decimals, tokenB?.decimals).toString(),)
       const pool_lower_tick_index = convertI32ToSigned(
-        TickMath.priceToTickIndexWithTickSpacing(
+        TickMath.priceToTickIndexWithTickSpacingUnsafe(
           new Decimal(lower_price),
           tokenA?.decimals,
           tokenB?.decimals,
@@ -979,7 +982,7 @@ export class PoolModule implements BaseModule {
         ),
       );
       const pool_upper_tick_index = convertI32ToSigned(
-        TickMath.priceToTickIndexWithTickSpacing(
+        TickMath.priceToTickIndexWithTickSpacingUnsafe(
           new Decimal(upper_price),
           tokenA?.decimals,
           tokenB?.decimals,
@@ -1023,6 +1026,10 @@ export class PoolModule implements BaseModule {
     } catch (e) {
       console.error('Error getting rewards apy.');
       console.error(e);
+      return {
+        feeAPR: '0',
+        rewarderApr: [],
+      };
     }
   }
 
