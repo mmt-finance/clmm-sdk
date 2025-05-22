@@ -153,7 +153,7 @@ export class PositionModule implements BaseModule {
       address,
     );
     const positions = objects.filter(
-      (obj: any) => obj.type === `${this.sdk.PackageId}::position::Position`,
+      (obj: any) => obj.type === `${this.sdk.contractConst.publishedAt}::position::Position`,
     );
     const tokenPriceMap = new Map(tokens.map((token) => [token.coinType, Number(token.price)]));
     return positions
@@ -199,7 +199,7 @@ export class PositionModule implements BaseModule {
         this.sdk.Pool.getAllTokens(),
       ]);
       const positions = objects.filter(
-        (obj: any) => obj.type === `${this.sdk.PackageId}::position::Position`,
+        (obj: any) => obj.type === `${this.sdk.contractConst.publishedAt}::position::Position`,
       );
 
       const positionRewardsInfo = await this.fetchRewards(
@@ -322,7 +322,11 @@ export class PositionModule implements BaseModule {
         const positionData = position.fields;
         const pos_id = positionData.id.id;
         const pool_id = positionData.pool_id;
+        console.log('pool_id:', pool_id);
+        console.log('positionData:', positionData);
         const pool = pools.find((pool) => pool.poolId === pool_id);
+        console.log(pool);
+        console.log(pool.tokenXType);
         const poolModel: PoolParams = {
           objectId: pool_id,
           tokenXType: pool.tokenXType,

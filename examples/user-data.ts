@@ -20,7 +20,7 @@ export async function main() {
     senderAddress,
   );
   const positions = objects.filter(
-    (obj: any) => obj.type === `${sdk.PackageId}::position::Position`,
+    (obj: any) => obj.type === `${sdk.contractConst.publishedAt}::position::Position`,
   );
   const rewardsAndFees = await sdk.Position.fetchRewards(
     positions,

@@ -479,7 +479,7 @@ export class PoolModule implements BaseModule {
       userAddress,
     );
     const positions = objects.filter(
-      (obj: any) => obj.type === `${this.sdk.PackageId}::position::Position`,
+      (obj: any) => obj.type === `${this.sdk.contractConst.publishedAt}::position::Position`,
     );
     return this.fetchRewardsAndFee(positions, pools, userAddress);
   }
@@ -713,9 +713,9 @@ export class PoolModule implements BaseModule {
         throw new Error(`Cannot get pool object [${poolIds}]`);
       }
       const { address, module, name } = parseStructTag(poolType);
-      if (address !== this.sdk.PackageId || module !== 'pool' || name !== 'Pool') {
+      if (address !== this.sdk.contractConst.publishedAt || module !== 'pool' || name !== 'Pool') {
         throw new Error(
-          `Invalid pool type: expect: {${this.sdk.PackageId}::pool::Pool}, got: {${address} :: ${module} :: ${name}`,
+          `Invalid pool type: expect: {${this.sdk.contractConst.publishedAt}::pool::Pool}, got: {${address} :: ${module} :: ${name}`,
         );
       }
     }
