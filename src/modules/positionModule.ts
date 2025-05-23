@@ -153,7 +153,7 @@ export class PositionModule implements BaseModule {
       address,
     );
     const positions = objects.filter(
-      (obj: any) => obj.type === `${this.sdk.PackageId}::position::Position`,
+      (obj: any) => obj.type === `${this.sdk.contractConst.publishedAt}::position::Position`,
     );
     const tokenPriceMap = new Map(tokens.map((token) => [token.coinType, Number(token.price)]));
     return positions
@@ -199,7 +199,7 @@ export class PositionModule implements BaseModule {
         this.sdk.Pool.getAllTokens(),
       ]);
       const positions = objects.filter(
-        (obj: any) => obj.type === `${this.sdk.PackageId}::position::Position`,
+        (obj: any) => obj.type === `${this.sdk.contractConst.publishedAt}::position::Position`,
       );
 
       const positionRewardsInfo = await this.fetchRewards(
