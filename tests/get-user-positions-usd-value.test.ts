@@ -1,12 +1,3 @@
-jest.mock('../src/utils/poolUtils', () => {
-  const actual = jest.requireActual('../src/utils/poolUtils');
-  return {
-    ...actual,
-    fetchAllPoolsApi: jest.fn(),
-    fetchAllTokenApi: jest.fn(),
-  };
-});
-
 import { PoolModule } from '../src/modules/poolModule';
 import { MmtSDK, PositionModule } from '../src';
 import { describe, it, beforeEach, expect } from '@jest/globals';
@@ -24,9 +15,6 @@ describe('PositionModule.getUserPositionsUsdValue', () => {
     sdk = MmtSDK.NEW({ network: 'mainnet' });
     positionModule = sdk.Position;
     poolModule = sdk.Pool;
-
-    (fetchAllPoolsApi as jest.Mock).mockResolvedValue(ALL_POOL_DATA);
-    (fetchAllTokenApi as jest.Mock).mockResolvedValue(ALL_TOKEN_DATA);
   });
 
   it('should return correct USD value', async () => {

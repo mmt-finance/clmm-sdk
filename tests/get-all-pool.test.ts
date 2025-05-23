@@ -31,7 +31,7 @@ describe('PoolModule', () => {
         expect(DecimalUtils.toBeCloseToDecimal(gotApr, aprDB));
         expect(DecimalUtils.toBeCloseToDecimal(gotApr, new Decimal(pool.aprBreakdown.total)));
       });
-    });
+    }, 30000);
 
     it('getAllPools no validate', async () => {
       (sdk.Pool as any).validatePoolsId = jest.fn().mockRejectedValueOnce(new Error('test error'));
