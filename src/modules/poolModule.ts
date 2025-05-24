@@ -700,23 +700,35 @@ export class PoolModule implements BaseModule {
   }
 
   private async validatePoolsId(poolIds: string[]) {
-    const resp: SuiObjectResponse[] = await this.sdk.rpcClient.multiGetObjects({
-      ids: poolIds,
-      options: { showType: true },
-    });
-    if (!resp || resp.length === 0) {
-      throw new Error(`Cannot get pools objects [${poolIds}]`);
-    }
-    for (const poolData of resp) {
-      const poolType = poolData?.data?.type;
-      if (!poolType) {
-        throw new Error(`Cannot get pool object [${poolIds}]`);
+    const BATCH_SIZE = 20;
+
+    for (let i = 0; i < poolIds.length; i += BATCH_SIZE) {
+      const batch = poolIds.slice(i, i + BATCH_SIZE);
+
+      const resp: SuiObjectResponse[] = await this.sdk.rpcClient.multiGetObjects({
+        ids: batch,
+        options: { showType: true },
+      });
+
+      if (!resp || resp.length === 0) {
+        throw new Error(`Cannot get pools objects [${batch}]`);
       }
-      const { address, module, name } = parseStructTag(poolType);
-      if (address !== this.sdk.contractConst.publishedAt || module !== 'pool' || name !== 'Pool') {
-        throw new Error(
-          `Invalid pool type: expect: {${this.sdk.contractConst.publishedAt}::pool::Pool}, got: {${address} :: ${module} :: ${name}`,
-        );
+
+      for (const poolData of resp) {
+        const poolType = poolData?.data?.type;
+        if (!poolType) {
+          throw new Error(`Cannot get pool object [${batch}]`);
+        }
+        const { address, module, name } = parseStructTag(poolType);
+        if (
+          address !== this.sdk.contractConst.publishedAt ||
+          module !== 'pool' ||
+          name !== 'Pool'
+        ) {
+          throw new Error(
+            `Invalid pool type: expect: {${this.sdk.contractConst.publishedAt}::pool::Pool}, got: {${address} :: ${module} :: ${name}}`,
+          );
+        }
       }
     }
   }
