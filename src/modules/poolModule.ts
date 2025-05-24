@@ -661,19 +661,7 @@ export class PoolModule implements BaseModule {
     if (validate) {
       await this.validatePoolsId(pools.map((pool) => pool.poolId));
     }
-
-    const tokens = await this.getAllTokens();
-
-    return Promise.all(
-      pools.map(async (pool) => {
-        const aprBreakdown = await this.calcRewardApr(pool, tokens);
-        return {
-          ...pool,
-          apy: aprBreakdown.total,
-          aprBreakdown,
-        };
-      }),
-    );
+    return pools;
   }
 
   public async getPool(
@@ -688,15 +676,7 @@ export class PoolModule implements BaseModule {
     if (validate) {
       await this.validatePoolsId([pool.poolId]);
     }
-
-    const tokens = await this.getAllTokens();
-
-    const aprBreakdown = await this.calcRewardApr(pool, tokens);
-    return {
-      ...pool,
-      apy: aprBreakdown.total,
-      aprBreakdown,
-    };
+    return pool;
   }
 
   private async validatePoolsId(poolIds: string[]) {
