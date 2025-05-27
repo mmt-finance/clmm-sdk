@@ -24,6 +24,7 @@ export const TestnetConfig = {
   },
   mmtApiUrl: 'https://api-dev.mmt.finance',
   suiClientUrl: 'https://fullnode.testnet.sui.io:443',
+  mvrEndpoint: '',
 };
 export class Config {
   static getDefaultClmmParams(network: string) {

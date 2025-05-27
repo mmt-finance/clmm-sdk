@@ -63,6 +63,7 @@
     ]
   },
   "dependencies": {
+    "@okx-dex/okx-dex-sdk": "^1.0.13",
     "@syntsugar/cc-graph": "^0.1.1",
     "tslib": "^2.8.1"
   }
