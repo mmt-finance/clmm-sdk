@@ -1105,7 +1105,7 @@ export class PoolModule implements BaseModule {
 
         const apr = new Decimal(tvlUSD).eq(0)
           ? new Decimal(0)
-          : rewardUSDPerDay.mul(365).div(tvlUSD).mul(120);
+          : rewardUSDPerDay.mul(365).div(tvlUSD).mul(100);
 
         return {
           rewarderApr: apr,
