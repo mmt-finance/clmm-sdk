@@ -1090,7 +1090,7 @@ export class PoolModule implements BaseModule {
 
     const feeAPR = new Decimal(tvlUSD).eq(0)
       ? new Decimal(0)
-      : feeUSD24h.mul(365).div(tvlUSD).mul(120);
+      : feeUSD24h.mul(365).div(tvlUSD).mul(110);
 
     const rewarderApr = (rewardsArr ?? [])
       .map((item) => {
