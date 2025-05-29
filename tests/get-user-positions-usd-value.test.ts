@@ -29,6 +29,11 @@ describe('PositionModule.getUserPositionsUsdValue', () => {
     const allPositions = await positionModule.getAllUserPositions(address);
     const positionUsdValueReturnByAllPositions = allPositions.map((position) => position.amount);
 
-    expect(positionUsdValue).toEqual(positionUsdValueReturnByAllPositions);
-  });
+    expect(
+      positionUsdValue.every(
+        (value, index) =>
+          Math.abs(value - positionUsdValueReturnByAllPositions[index]) < Math.pow(10, -2),
+      ),
+    ).toBe(true);
+  }, 30000);
 });

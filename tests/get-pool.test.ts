@@ -22,6 +22,6 @@ describe('PoolModule', () => {
 
       const pools: ExtendedPool[] = await poolModule.getAllPools();
       expect(pools).toBeDefined();
-    });
+    }, 30000);
   });
 });

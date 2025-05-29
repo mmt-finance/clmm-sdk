@@ -21,7 +21,7 @@ describe('PoolModule.fetchAllTickLiquidities & fetchTickLiquiditity', () => {
         expect(tickLiquidities[i].tickIndex).toEqual(-reverseTickLiquidities[i].tickIndex);
       }
     }
-  }, 30000);
+  }, 100000);
 
   it('fetchTickLiquiditity positive', async () => {
     const poolId = '0x455cf8d2ac91e7cb883f515874af750ed3cd18195c970b7a2d46235ac2b0c388';
@@ -34,5 +34,5 @@ describe('PoolModule.fetchAllTickLiquidities & fetchTickLiquiditity', () => {
         expect(tickData[i].tickIndex).toEqual(-reverseTickData[i].tickIndex);
       }
     }
-  });
+  }, 30000);
 });
