@@ -4,6 +4,7 @@ import { ClmmConsts } from './types';
 import { Config } from './config';
 import { SuiClient } from '@mysten/sui/client';
 import { RouteModule } from './modules/routeModule';
+import { AggregatorModule } from './modules/aggregatorModule';
 
 export class MmtSDK {
   protected readonly rpcModule: SuiClient;
@@ -13,6 +14,8 @@ export class MmtSDK {
   protected readonly positionModule: PositionModule;
 
   protected readonly routeModule: RouteModule;
+
+  protected readonly aggregatorModule: AggregatorModule;
 
   public readonly baseUrl: string;
 
@@ -47,6 +50,7 @@ export class MmtSDK {
     this.poolModule = new PoolModule(this);
     this.positionModule = new PositionModule(this);
     this.routeModule = new RouteModule(this);
+    this.aggregatorModule = new AggregatorModule(this);
   }
 
   static NEW(sdkParams?: {
@@ -92,6 +96,10 @@ export class MmtSDK {
 
   get Route(): RouteModule {
     return this.routeModule;
+  }
+
+  get Aggregator(): AggregatorModule {
+    return this.aggregatorModule;
   }
 
   get PackageId(): string {
