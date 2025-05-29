@@ -48,4 +48,22 @@ describe('AggregatorModule', () => {
     expect(tokens.length).toBe(2);
     expect(tokens[0].coinType).toBe('0x2::sui::SUI');
   });
+
+  it('should fetch OKX liquidity', async () => {
+    const liquidity = await aggregatorModule.getAggregatorLiquidity();
+    expect(liquidity).toBeDefined();
+  }, 30000);
+
+  it('should fetch swap data', async () => {
+    const params = {
+      userWalletAddress: '0x0000000000000000000000000000000000000000000000000000000000000000',
+      fromTokenAddress: '0x2::sui::SUI',
+      toTokenAddress:
+        '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC',
+      rawAmount: '1000000',
+      slippage: '0.1',
+    };
+    const swapData = await aggregatorModule.getSwapData(params);
+    expect(swapData).toBeDefined();
+  }, 30000);
 });
