@@ -951,14 +951,14 @@ export class PoolModule implements BaseModule {
       }
 
       const lower_price =
-        0.9 *
+        0.95 *
         TickMath.sqrtPriceX64ToPrice(
           new BN(pool?.currentSqrtPrice),
           tokenA?.decimals,
           tokenB?.decimals,
         ).toNumber();
       const upper_price =
-        1.1 *
+        1.05 *
         TickMath.sqrtPriceX64ToPrice(
           new BN(pool?.currentSqrtPrice),
           tokenA?.decimals,
