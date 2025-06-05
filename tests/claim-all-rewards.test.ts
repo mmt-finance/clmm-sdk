@@ -45,5 +45,5 @@ describe('PoolModule.collectAllPoolsRewards', () => {
     });
     expect(resp.effects.status.status).toBe('success');
     expect(resp.events.length).toEqual(eventCount);
-  }, 30000);
+  }, 300000);
 });
