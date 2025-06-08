@@ -1,6 +1,6 @@
 export const MainnetConfig = {
   clmm: {
-    packageId: '0x60e8683e01d5611cd13a69aca2b0c9aace7c6b559734df1b4a7ad9d6bddf007b',
+    packageId: '0xc84b1ef2ac2ba5c3018e2b8c956ba5d0391e0e46d1daa1926d5a99a6a42526b4',
     publishedAt: '0x70285592c97965e811e0c6f98dccc3a9c2b4ad854b3594faab9597ada267b860',
     aclId: '0xe7f25417d58cd086a64e3daed2ef04d065b606458becce33871f6d3e8b35db9d',
     adminCapId: '0x11d573677fee08613bc4e089252945753445ad710ac3e8e4b61d4f8281907118',
