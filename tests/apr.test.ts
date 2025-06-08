@@ -54,7 +54,7 @@ describe('PoolModule.collectAllPoolsRewards', () => {
       const tokenXDecimals = pool.tokenX.decimals;
       const tokenYDecimals = pool.tokenY.decimals;
       const pool_lower_tick_index = convertI32ToSigned(
-        TickMath.priceToTickIndexWithTickSpacing(
+        TickMath.priceToTickIndexWithTickSpacingUnsafe(
           new Decimal(position.lowerPrice),
           tokenXDecimals,
           tokenYDecimals,
@@ -62,7 +62,7 @@ describe('PoolModule.collectAllPoolsRewards', () => {
         ),
       );
       const pool_upper_tick_index = convertI32ToSigned(
-        TickMath.priceToTickIndexWithTickSpacing(
+        TickMath.priceToTickIndexWithTickSpacingUnsafe(
           new Decimal(position.upperPrice),
           tokenXDecimals,
           tokenYDecimals,
@@ -122,7 +122,7 @@ describe('PoolModule.collectAllPoolsRewards', () => {
     const tokenXDecimals = pool.tokenX.decimals;
     const tokenYDecimals = pool.tokenY.decimals;
     const pool_lower_tick_index = convertI32ToSigned(
-      TickMath.priceToTickIndexWithTickSpacing(
+      TickMath.priceToTickIndexWithTickSpacingUnsafe(
         new Decimal(position.lowerPrice),
         tokenXDecimals,
         tokenYDecimals,
@@ -130,7 +130,7 @@ describe('PoolModule.collectAllPoolsRewards', () => {
       ),
     );
     const pool_upper_tick_index = convertI32ToSigned(
-      TickMath.priceToTickIndexWithTickSpacing(
+      TickMath.priceToTickIndexWithTickSpacingUnsafe(
         new Decimal(position.upperPrice),
         tokenXDecimals,
         tokenYDecimals,
