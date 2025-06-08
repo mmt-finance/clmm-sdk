@@ -13,6 +13,7 @@ import { convertI32ToSigned, TickMath } from '../utils/math/tickMath';
 import { BN } from 'bn.js';
 import { getPositionStatus } from '../utils/positionUtils';
 import { SuiClient } from '@mysten/sui/dist/cjs/client';
+import { MathUtil } from '../utils/math/commonMath';
 
 export class PositionModule implements BaseModule {
   protected _sdk: MmtSDK;
@@ -165,8 +166,11 @@ export class PositionModule implements BaseModule {
         if (!pool) return null;
 
         const liquidity = new BN(positionData.liquidity ?? 0);
-        const upperTick = Number(positionData.tick_upper_index.fields.bits ?? 0);
-        const lowerTick = Number(positionData.tick_lower_index.fields.bits ?? 0);
+        const upperBits = Number(positionData.tick_upper_index.fields.bits ?? 0);
+        const lowerBits = Number(positionData.tick_lower_index.fields.bits ?? 0);
+        const upperTick = MathUtil.u32ToI32(upperBits);
+        const lowerTick = MathUtil.u32ToI32(lowerBits);
+
         const upperTickSqrtPrice = TickMath.tickIndexToSqrtPriceX64(convertI32ToSigned(upperTick));
         const lowerTickSqrtPrice = TickMath.tickIndexToSqrtPriceX64(convertI32ToSigned(lowerTick));
 
@@ -219,8 +223,11 @@ export class PositionModule implements BaseModule {
           const pool = pools.find((p) => p.poolId === positionData.pool_id);
           if (!pool) return null;
           const liquidity = new BN(positionData.liquidity ?? 0);
-          const upperTick = Number(positionData.tick_upper_index.fields.bits ?? 0);
-          const lowerTick = Number(positionData.tick_lower_index.fields.bits ?? 0);
+          const upperBits = Number(positionData.tick_upper_index.fields.bits ?? 0);
+          const lowerBits = Number(positionData.tick_lower_index.fields.bits ?? 0);
+          const upperTick = MathUtil.u32ToI32(upperBits);
+          const lowerTick = MathUtil.u32ToI32(lowerBits);
+
           const upperTickSqrtPrice = TickMath.tickIndexToSqrtPriceX64(
             convertI32ToSigned(upperTick),
           );
