@@ -831,17 +831,14 @@ export class PoolModule implements BaseModule {
     const upperSqrtPriceD = MathUtil.toX64_Decimal(MathUtil.fromX64(upperSqrtPriceX64)).round();
     const currentSqrtPriceD = MathUtil.toX64_Decimal(MathUtil.fromX64(currentSqrtPriceX64)).round();
     let deltaLiquidity;
-    const liquidityAmount0 = amountA
-      .mul(new Decimal(10 ** decimalsA))
-      .mul(upperSqrtPriceD.mul(lowerSqrtPriceD))
-      .div(new Decimal(Q_64))
-      .div(upperSqrtPriceD.sub(lowerSqrtPriceD))
-      .round();
-    const liquidityAmount1 = amountB
-      .mul(new Decimal(10 ** decimalsB))
-      .mul(new Decimal(Q_64))
-      .div(upperSqrtPriceD.sub(lowerSqrtPriceD))
-      .round();
+    const { liquidityAmount0, liquidityAmount1 } = this.calcLiquidityAmounts(
+      amountA,
+      amountB,
+      decimalsA,
+      decimalsB,
+      lowerSqrtPriceD,
+      upperSqrtPriceD,
+    );
 
     if (currentTickIndex < lowerTickIndex) {
       deltaLiquidity = liquidityAmount0;
@@ -850,18 +847,17 @@ export class PoolModule implements BaseModule {
     } else {
       deltaLiquidity = Decimal.min(liquidityAmount0, liquidityAmount1);
     }
-    const deltaY = deltaLiquidity
-      .mul(currentSqrtPriceD.sub(lowerSqrtPriceD))
-      .div(new Decimal(Q_64));
-    const deltaX = deltaLiquidity
-      .mul(upperSqrtPriceD.sub(currentSqrtPriceD))
-      .div(currentSqrtPriceD.mul(upperSqrtPriceD))
-      .mul(new Decimal(Q_64));
 
-    const posValidTVL = deltaX
-      .div(new Decimal(10 ** decimalsA))
-      .mul(coinAPrice)
-      .add(deltaY.div(new Decimal(10 ** decimalsB).mul(coinBPrice)));
+    const posValidTVL = this.getPosValidTVL(
+      deltaLiquidity,
+      currentSqrtPriceD,
+      lowerSqrtPriceD,
+      upperSqrtPriceD,
+      decimalsA,
+      decimalsB,
+      coinAPrice,
+      coinBPrice,
+    );
 
     const feeAPR = deltaLiquidity.eq(new Decimal(0))
       ? new Decimal(0)
@@ -903,6 +899,161 @@ export class PoolModule implements BaseModule {
       feeAPR,
       rewarderApr,
     };
+  }
+
+  public estPositionAPRWithLiquidityHMMethod(
+    currentTickIndex: number,
+    lowerTickIndex: number,
+    upperTickIndex: number,
+    currentSqrtPriceX64: BN,
+    poolLiquidity: BN,
+    poolLiquidityHM: BN,
+    decimalsA: number,
+    decimalsB: number,
+    feeRate: number,
+    amountAStr: string,
+    amountBStr: string,
+    swapVolumeStr: string,
+    coinAPriceStr: string,
+    coinBPriceStr: string,
+    poolRewarders: any[],
+  ) {
+    if (poolLiquidityHM.eq(new BN(0))) {
+      return this.estPositionAPRWithDeltaMethod(
+        currentTickIndex,
+        lowerTickIndex,
+        upperTickIndex,
+        currentSqrtPriceX64,
+        poolLiquidity,
+        decimalsA,
+        decimalsB,
+        feeRate,
+        amountAStr,
+        amountBStr,
+        swapVolumeStr,
+        coinAPriceStr,
+        coinBPriceStr,
+        poolRewarders,
+      );
+    }
+    const rewarderApr = [];
+    const amountA = new Decimal(amountAStr);
+    const amountB = new Decimal(amountBStr);
+    const swapVolume = new Decimal(swapVolumeStr);
+    const coinAPrice = new Decimal(coinAPriceStr);
+    const coinBPrice = new Decimal(coinBPriceStr);
+    const lowerSqrtPriceX64 = TickMath.tickIndexToSqrtPriceX64(lowerTickIndex);
+    const upperSqrtPriceX64 = TickMath.tickIndexToSqrtPriceX64(upperTickIndex);
+    const lowerSqrtPriceD = MathUtil.toX64_Decimal(MathUtil.fromX64(lowerSqrtPriceX64)).round();
+    const upperSqrtPriceD = MathUtil.toX64_Decimal(MathUtil.fromX64(upperSqrtPriceX64)).round();
+    const currentSqrtPriceD = MathUtil.toX64_Decimal(MathUtil.fromX64(currentSqrtPriceX64)).round();
+    let deltaLiquidity;
+    const { liquidityAmount0, liquidityAmount1 } = this.calcLiquidityAmounts(
+      amountA,
+      amountB,
+      decimalsA,
+      decimalsB,
+      lowerSqrtPriceD,
+      upperSqrtPriceD,
+    );
+
+    if (currentTickIndex < lowerTickIndex) {
+      deltaLiquidity = liquidityAmount0;
+    } else if (currentTickIndex > upperTickIndex) {
+      deltaLiquidity = liquidityAmount1;
+    } else {
+      deltaLiquidity = Decimal.min(liquidityAmount0, liquidityAmount1);
+    }
+
+    const posValidTVL = this.getPosValidTVL(
+      deltaLiquidity,
+      currentSqrtPriceD,
+      lowerSqrtPriceD,
+      upperSqrtPriceD,
+      decimalsA,
+      decimalsB,
+      coinAPrice,
+      coinBPrice,
+    );
+
+    const feeAPR = deltaLiquidity.eq(new Decimal(0))
+      ? new Decimal(0)
+      : new Decimal(feeRate)
+          .mul(swapVolume)
+          .mul(new Decimal(deltaLiquidity.toString()).div(new Decimal(poolLiquidityHM.toString())))
+          .div(posValidTVL)
+          .mul(new Decimal(365));
+
+    poolRewarders?.map((item) => {
+      if (item.hasEnded) return;
+      const rewarderDecimals = item.rewardsDecimal;
+      const amountPerDay = new Decimal(item.flowRate)
+        .div(new Decimal('18446744073709551616'))
+        .mul(86400)
+        .div(new Decimal(10 ** rewarderDecimals));
+      const posRewarderPrice = new Decimal(item.rewardsPrice);
+      const posRewarderAPR = amountPerDay
+        .mul(posRewarderPrice)
+        .mul(new Decimal(deltaLiquidity.toString()).div(new Decimal(poolLiquidityHM.toString())))
+        .div(posValidTVL)
+        .mul(new Decimal(36500));
+
+      rewarderApr.push({
+        rewarderApr: posRewarderAPR,
+        coinType: item.coinType,
+        amountPerDay,
+      });
+    });
+    return {
+      feeAPR,
+      rewarderApr,
+    };
+  }
+
+  public calcLiquidityAmounts(
+    amountA: Decimal,
+    amountB: Decimal,
+    decimalsA: number,
+    decimalsB: number,
+    lowerSqrtPriceD: Decimal,
+    upperSqrtPriceD: Decimal,
+  ) {
+    const liquidityAmount0 = amountA
+      .mul(new Decimal(10 ** decimalsA))
+      .mul(upperSqrtPriceD.mul(lowerSqrtPriceD))
+      .div(new Decimal(Q_64))
+      .div(upperSqrtPriceD.sub(lowerSqrtPriceD))
+      .round();
+    const liquidityAmount1 = amountB
+      .mul(new Decimal(10 ** decimalsB))
+      .mul(new Decimal(Q_64))
+      .div(upperSqrtPriceD.sub(lowerSqrtPriceD))
+      .round();
+    return { liquidityAmount0, liquidityAmount1 };
+  }
+
+  public getPosValidTVL(
+    deltaLiquidity: Decimal,
+    currentSqrtPriceD: Decimal,
+    lowerSqrtPriceD: Decimal,
+    upperSqrtPriceD: Decimal,
+    decimalsA: number,
+    decimalsB: number,
+    coinAPrice: Decimal,
+    coinBPrice: Decimal,
+  ) {
+    const deltaY = deltaLiquidity
+      .mul(currentSqrtPriceD.sub(lowerSqrtPriceD))
+      .div(new Decimal(Q_64));
+    const deltaX = deltaLiquidity
+      .mul(upperSqrtPriceD.sub(currentSqrtPriceD))
+      .div(currentSqrtPriceD.mul(upperSqrtPriceD))
+      .mul(new Decimal(Q_64));
+
+    return deltaX
+      .div(new Decimal(10 ** decimalsA))
+      .mul(coinAPrice)
+      .add(deltaY.div(new Decimal(10 ** decimalsB).mul(coinBPrice)));
   }
 
   public calculatePoolValidTVL(
