@@ -55,6 +55,7 @@ export interface PoolApi {
   currentSqrtPrice: string;
   currentTickIndex: string;
   liquidity: string;
+  liquidityHM: string;
   tokenXReserve: string;
   tokenYReserve: string;
   tvl: string;
