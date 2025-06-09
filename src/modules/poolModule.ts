@@ -901,7 +901,7 @@ export class PoolModule implements BaseModule {
     };
   }
 
-  public estPositionAPRWithLiquidityHMMethod(
+  public estPositionAPRWithLiquidityHM(
     currentTickIndex: number,
     lowerTickIndex: number,
     upperTickIndex: number,

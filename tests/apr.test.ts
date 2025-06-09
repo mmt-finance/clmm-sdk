@@ -158,7 +158,7 @@ describe('PoolModule.collectAllPoolsRewards', () => {
       };
     });
 
-    const aprData = await sdk.Pool.estPositionAPRWithLiquidityHMMethod(
+    const aprData = await sdk.Pool.estPositionAPRWithLiquidityHM(
       convertI32ToSigned(Number(pool.currentTickIndex)),
       pool_lower_tick_index,
       pool_upper_tick_index,
