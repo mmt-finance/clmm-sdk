@@ -5,6 +5,7 @@ import { Config } from './config';
 import { SuiClient } from '@mysten/sui/client';
 import { RouteModule } from './modules/routeModule';
 import { AggregatorModule } from './modules/aggregatorModule';
+import { namedPackagesPlugin } from './utils/mvr/mvrNamedPackagesPlugin';
 
 export class MmtSDK {
   protected readonly rpcModule: SuiClient;
@@ -23,6 +24,8 @@ export class MmtSDK {
 
   public readonly customHeaders?: HeadersInit;
 
+  public readonly mvrNamedPackagesPlugin: any;
+
   /**
    * @deprecated use MmtSDK.NEW instead
    */
@@ -34,6 +37,7 @@ export class MmtSDK {
     contractConst?: ClmmConsts,
     client?: SuiClient,
     customHeaders?: HeadersInit,
+    mvrEndpoint?: string,
   ) {
     if (client) {
       this.rpcModule = client;
@@ -51,6 +55,9 @@ export class MmtSDK {
     this.positionModule = new PositionModule(this);
     this.routeModule = new RouteModule(this);
     this.aggregatorModule = new AggregatorModule(this);
+    this.mvrNamedPackagesPlugin = namedPackagesPlugin({
+      url: mvrEndpoint,
+    });
   }
 
   static NEW(sdkParams?: {
@@ -60,6 +67,7 @@ export class MmtSDK {
     suiClientUrl?: string;
     client?: SuiClient;
     customHeaders?: HeadersInit;
+    mvrEndpoint?: string;
   }) {
     if (sdkParams.network === 'custom' && !sdkParams?.contractConst) {
       throw new Error('missing contractConst for custom network');
@@ -68,6 +76,7 @@ export class MmtSDK {
     const clmm = sdkParams?.contractConst ?? { ...Config.getDefaultClmmParams(network) };
     const mmtApiUrl = sdkParams?.mmtApiUrl || Config.getDefaultMmtApiUrl(network);
     const suiClientUrl = sdkParams?.suiClientUrl || Config.getDefaultSuiClientUrl(network);
+    const mvrEndpoint = sdkParams?.mvrEndpoint || Config.getDefaultMvrEndpoint(network);
     if (!suiClientUrl.trim() && !sdkParams?.client) {
       throw new Error('Either suiClientUrl or client must be provided');
     }
@@ -79,6 +88,7 @@ export class MmtSDK {
       clmm,
       sdkParams?.client,
       sdkParams?.customHeaders,
+      mvrEndpoint,
     );
   }
 

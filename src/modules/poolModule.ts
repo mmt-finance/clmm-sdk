@@ -55,7 +55,11 @@ export class PoolModule implements BaseModule {
     coinYType: string,
     decimalsX: number,
     decimalsY: number,
+    useMvr: boolean = true,
   ) {
+    if (useMvr) {
+      txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
+    }
     const [pool] = txb.moveCall({
       target: `${this.sdk.PackageId}::create_pool::new`,
       typeArguments: [coinXType, coinYType],
@@ -92,7 +96,11 @@ export class PoolModule implements BaseModule {
     isXtoY: boolean,
     transferToAddress?: string,
     limitSqrtPrice?: bigint,
+    useMvr: boolean = true,
   ) {
+    if (useMvr) {
+      txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
+    }
     const LowLimitPrice = BigInt('4295048017');
     const HighLimitPrice = BigInt('79226673515401279992447579050');
     const poolObject = txb.object(pool.objectId);
@@ -200,7 +208,11 @@ export class PoolModule implements BaseModule {
     amountY: bigint,
     inputCoin: any,
     transferToAddress?: string,
+    useMvr: boolean = true,
   ) {
+    if (useMvr) {
+      txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
+    }
     const LowLimitPrice = 4295048016;
     const [receive_a, receive_b, flash_receipt] = txb.moveCall({
       target: `${this.sdk.PackageId}::trade::flash_loan`,
@@ -262,7 +274,11 @@ export class PoolModule implements BaseModule {
     min_amount_x: bigint,
     min_amount_y: bigint,
     transferToAddress?: string,
+    useMvr: boolean = true,
   ) {
+    if (useMvr) {
+      txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
+    }
     const [removeLpCoinA, removeLpCoinB] = txb.moveCall({
       target: `${this.sdk.PackageId}::liquidity::remove_liquidity`,
       typeArguments: [pool.tokenXType, pool.tokenYType],
@@ -293,7 +309,11 @@ export class PoolModule implements BaseModule {
     min_amount_x: bigint,
     min_amount_y: bigint,
     transferToAddress?: string,
+    useMvr: boolean = true,
   ) {
+    if (useMvr) {
+      txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
+    }
     const [coinA, coinB] = txb.moveCall({
       target: `${this.sdk.PackageId}::liquidity::add_liquidity`,
       typeArguments: [pool.tokenXType, pool.tokenYType],
@@ -336,7 +356,11 @@ export class PoolModule implements BaseModule {
     isXtoY: boolean,
     transferToAddress?: string,
     limitSqrtPrice?: bigint,
+    useMvr: boolean = true,
   ) {
+    if (useMvr) {
+      txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
+    }
     const LowLimitPrice = BigInt('4295048017');
     const HighLimitPrice = BigInt('79226673515401279992447579050');
 
@@ -405,7 +429,11 @@ export class PoolModule implements BaseModule {
     pool: PoolParams,
     positionId: string | TransactionArgument,
     transferToAddress?: string,
+    useMvr: boolean = true,
   ) {
+    if (useMvr) {
+      txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
+    }
     const [feeCoinA, feeCoinB] = txb.moveCall({
       target: `${this.sdk.PackageId}::collect::fee`,
       arguments: [
@@ -430,7 +458,11 @@ export class PoolModule implements BaseModule {
     positionId: string | TransactionArgument,
     rewardCoinType: string,
     transferToAddress?: string,
+    useMvr: boolean = true,
   ) {
+    if (useMvr) {
+      txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
+    }
     const [rewardCoin] = txb.moveCall({
       target: `${this.sdk.PackageId}::collect::reward`,
       arguments: [
@@ -455,7 +487,11 @@ export class PoolModule implements BaseModule {
     rewarders: Rewarder[],
     positionId: string | TransactionArgument,
     transferToAddress?: string,
+    useMvr: boolean = true,
   ) {
+    if (useMvr) {
+      txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
+    }
     const rewardCoins = [];
     rewarders.map((item) => {
       const rewardCoinType = item.coin_type;
@@ -486,6 +522,8 @@ export class PoolModule implements BaseModule {
 
   public async fetchRewardsAndFee(positions: any, pools: ExtendedPool[], address: string) {
     const txb = new Transaction();
+    txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
+
     positions.map((position: any) => {
       const positionData = position.fields;
       const pos_id = positionData.id.id;

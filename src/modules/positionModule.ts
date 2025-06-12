@@ -32,7 +32,11 @@ export class PositionModule implements BaseModule {
     lower_tick_sqrt_price: string | TransactionArgument,
     upper_tick_sqrt_price: string | TransactionArgument,
     transferToAddress?: string,
+    useMvr: boolean = true,
   ) {
+    if (useMvr) {
+      txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
+    }
     const [lowerTick1] = txb.moveCall({
       target: `${this.sdk.PackageId}::tick_math::get_tick_at_sqrt_price`,
       arguments: [
@@ -91,7 +95,14 @@ export class PositionModule implements BaseModule {
     }
   }
 
-  public closePosition(txb: Transaction, positionId: string | TransactionArgument) {
+  public closePosition(
+    txb: Transaction,
+    positionId: string | TransactionArgument,
+    useMvr: boolean = true,
+  ) {
+    if (useMvr) {
+      txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
+    }
     txb.moveCall({
       target: `${this.sdk.PackageId}::liquidity::close_position`,
       arguments: [txnArgument(positionId, txb), txb.object(this.sdk.contractConst.versionId)],
@@ -102,7 +113,11 @@ export class PositionModule implements BaseModule {
     txb: Transaction,
     positionId: string | TransactionArgument,
     reward_growth_inside: number[],
+    useMvr: boolean = true,
   ) {
+    if (useMvr) {
+      txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
+    }
     txb.moveCall({
       target: `${this.sdk.PackageId}::position::update_reward_infos`,
       arguments: [
@@ -121,7 +136,11 @@ export class PositionModule implements BaseModule {
     txb: Transaction,
     positionId: string | TransactionArgument,
     reward_index: number,
+    useMvr: boolean = true,
   ) {
+    if (useMvr) {
+      txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
+    }
     const [rewardinfoObj] = txb.moveCall({
       target: `${this.sdk.PackageId}::position::try_borrow_mut_reward_info`,
       arguments: [txnArgument(positionId, txb), txb.pure.u64(reward_index)],
@@ -325,6 +344,8 @@ export class PositionModule implements BaseModule {
     for (let i = 0; i < positions.length; i += batchSize) {
       const batch = positions.slice(i, i + batchSize);
       const txb = new Transaction();
+      txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
+
       for (const position of batch) {
         const positionData = position.fields;
         const pos_id = positionData.id.id;
@@ -396,6 +417,8 @@ export class PositionModule implements BaseModule {
 
   public async getCoinOwedReward(positionId: string | TransactionArgument, reward_index: number) {
     const txb = new Transaction();
+    txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
+
     txb.moveCall({
       target: `${this.sdk.PackageId}::position::coins_owed_reward`,
       arguments: [txnArgument(positionId, txb), txb.pure.u64(reward_index)],
@@ -417,6 +440,8 @@ export class PositionModule implements BaseModule {
 
   public async getOwedCoinX(positionId: string | TransactionArgument) {
     const txb = new Transaction();
+    txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
+
     txb.moveCall({
       target: `${this.sdk.PackageId}::position::owed_coin_x`,
       arguments: [txnArgument(positionId, txb)],
@@ -438,6 +463,8 @@ export class PositionModule implements BaseModule {
 
   public async getOwedCoinY(positionId: string | TransactionArgument) {
     const txb = new Transaction();
+    txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
+
     txb.moveCall({
       target: `${this.sdk.PackageId}::position::owed_coin_y`,
       arguments: [txnArgument(positionId, txb)],
@@ -459,6 +486,8 @@ export class PositionModule implements BaseModule {
 
   public async getFeeGrowthInsideXLast(positionId: string | TransactionArgument) {
     const txb = new Transaction();
+    txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
+
     txb.moveCall({
       target: `${this.sdk.PackageId}::position::fee_growth_inside_x_last`,
       arguments: [txnArgument(positionId, txb)],
@@ -480,6 +509,8 @@ export class PositionModule implements BaseModule {
 
   public async getFeeGrowthInsideYLast(positionId: string | TransactionArgument) {
     const txb = new Transaction();
+    txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
+
     txb.moveCall({
       target: `${this.sdk.PackageId}::position::fee_growth_inside_y_last`,
       arguments: [txnArgument(positionId, txb)],
@@ -501,6 +532,8 @@ export class PositionModule implements BaseModule {
 
   public async getFeeRate(positionId: string | TransactionArgument) {
     const txb = new Transaction();
+    txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
+
     txb.moveCall({
       target: `${this.sdk.PackageId}::position::fee_rate`,
       arguments: [txnArgument(positionId, txb)],
@@ -522,6 +555,8 @@ export class PositionModule implements BaseModule {
 
   public async getLiquidity(positionId: string | TransactionArgument) {
     const txb = new Transaction();
+    txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
+
     txb.moveCall({
       target: `${this.sdk.PackageId}::position::liquidity`,
       arguments: [txnArgument(positionId, txb)],
@@ -546,6 +581,8 @@ export class PositionModule implements BaseModule {
     reward_index: number,
   ) {
     const txb = new Transaction();
+    txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
+
     txb.moveCall({
       target: `${this.sdk.PackageId}::position::reward_growth_inside_last`,
       arguments: [txnArgument(positionId, txb), txb.pure.u64(reward_index)],
@@ -567,6 +604,8 @@ export class PositionModule implements BaseModule {
 
   public async getTickLowerIndex(positionId: string | TransactionArgument) {
     const txb = new Transaction();
+    txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
+
     txb.moveCall({
       target: `${this.sdk.PackageId}::position::tick_lower_index`,
       arguments: [txnArgument(positionId, txb)],
@@ -588,6 +627,8 @@ export class PositionModule implements BaseModule {
 
   public async getTickUpperIndex(positionId: string | TransactionArgument) {
     const txb = new Transaction();
+    txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
+
     txb.moveCall({
       target: `${this.sdk.PackageId}::position::tick_upper_index`,
       arguments: [txnArgument(positionId, txb)],
@@ -609,6 +650,8 @@ export class PositionModule implements BaseModule {
 
   public async fetchAllRewards(positionId: string, address: string, pool: ExtendedPool) {
     const txb = new Transaction();
+    txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
+
     const poolModel: PoolParams = {
       objectId: pool.poolId,
       tokenXType: pool.tokenXType,
