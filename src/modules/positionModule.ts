@@ -34,7 +34,7 @@ export class PositionModule implements BaseModule {
     transferToAddress?: string,
     useMvr: boolean = true,
   ) {
-    useMvr && txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);     
+    useMvr && txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
     const targetPackage = useMvr ? this.sdk.contractConst.mvrName : this.sdk.PackageId;
 
     const [lowerTick1] = txb.moveCall({
@@ -100,7 +100,7 @@ export class PositionModule implements BaseModule {
     positionId: string | TransactionArgument,
     useMvr: boolean = true,
   ) {
-    useMvr && txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);     
+    useMvr && txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
     const targetPackage = useMvr ? this.sdk.contractConst.mvrName : this.sdk.PackageId;
 
     txb.moveCall({
@@ -115,7 +115,7 @@ export class PositionModule implements BaseModule {
     reward_growth_inside: number[],
     useMvr: boolean = true,
   ) {
-    useMvr && txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);     
+    useMvr && txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
     const targetPackage = useMvr ? this.sdk.contractConst.mvrName : this.sdk.PackageId;
 
     txb.moveCall({
@@ -138,7 +138,7 @@ export class PositionModule implements BaseModule {
     reward_index: number,
     useMvr: boolean = true,
   ) {
-    useMvr && txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);     
+    useMvr && txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
     const targetPackage = useMvr ? this.sdk.contractConst.mvrName : this.sdk.PackageId;
 
     const [rewardinfoObj] = txb.moveCall({

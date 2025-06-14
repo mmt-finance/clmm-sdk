@@ -57,9 +57,9 @@ export class PoolModule implements BaseModule {
     decimalsY: number,
     useMvr: boolean = true,
   ) {
-    useMvr && txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);     
+    useMvr && txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
     const targetPackage = useMvr ? this.sdk.contractConst.mvrName : this.sdk.PackageId;
-    
+
     const [pool] = txb.moveCall({
       target: `${targetPackage}::create_pool::new`,
       typeArguments: [coinXType, coinYType],
@@ -98,7 +98,7 @@ export class PoolModule implements BaseModule {
     limitSqrtPrice?: bigint,
     useMvr: boolean = true,
   ) {
-    useMvr && txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);     
+    useMvr && txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
     const targetPackage = useMvr ? this.sdk.contractConst.mvrName : this.sdk.PackageId;
 
     const LowLimitPrice = BigInt('4295048017');
@@ -210,7 +210,7 @@ export class PoolModule implements BaseModule {
     transferToAddress?: string,
     useMvr: boolean = true,
   ) {
-    useMvr && txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);     
+    useMvr && txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
     const targetPackage = useMvr ? this.sdk.contractConst.mvrName : this.sdk.PackageId;
 
     const LowLimitPrice = 4295048016;
@@ -276,7 +276,7 @@ export class PoolModule implements BaseModule {
     transferToAddress?: string,
     useMvr: boolean = true,
   ) {
-    useMvr && txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);     
+    useMvr && txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
     const targetPackage = useMvr ? this.sdk.contractConst.mvrName : this.sdk.PackageId;
 
     const [removeLpCoinA, removeLpCoinB] = txb.moveCall({
@@ -311,7 +311,7 @@ export class PoolModule implements BaseModule {
     transferToAddress?: string,
     useMvr: boolean = true,
   ) {
-    useMvr && txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);     
+    useMvr && txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
     const targetPackage = useMvr ? this.sdk.contractConst.mvrName : this.sdk.PackageId;
 
     const [coinA, coinB] = txb.moveCall({
@@ -358,7 +358,7 @@ export class PoolModule implements BaseModule {
     limitSqrtPrice?: bigint,
     useMvr: boolean = true,
   ) {
-    useMvr && txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);     
+    useMvr && txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
     const targetPackage = useMvr ? this.sdk.contractConst.mvrName : this.sdk.PackageId;
 
     const LowLimitPrice = BigInt('4295048017');
@@ -431,7 +431,7 @@ export class PoolModule implements BaseModule {
     transferToAddress?: string,
     useMvr: boolean = true,
   ) {
-    useMvr && txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);     
+    useMvr && txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
     const targetPackage = useMvr ? this.sdk.contractConst.mvrName : this.sdk.PackageId;
 
     const [feeCoinA, feeCoinB] = txb.moveCall({
@@ -460,7 +460,7 @@ export class PoolModule implements BaseModule {
     transferToAddress?: string,
     useMvr: boolean = true,
   ) {
-    useMvr && txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);     
+    useMvr && txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
     const targetPackage = useMvr ? this.sdk.contractConst.mvrName : this.sdk.PackageId;
 
     const [rewardCoin] = txb.moveCall({
@@ -489,7 +489,7 @@ export class PoolModule implements BaseModule {
     transferToAddress?: string,
     useMvr: boolean = true,
   ) {
-    useMvr && txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);     
+    useMvr && txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
     const targetPackage = useMvr ? this.sdk.contractConst.mvrName : this.sdk.PackageId;
 
     const rewardCoins = [];
@@ -1220,7 +1220,7 @@ export class PoolModule implements BaseModule {
 
   public async preSwap(tx: Transaction, pools: PreSwapParam[], sourceAmount: any) {
     const targetPackage = this.sdk.contractConst.mvrName || this.sdk.PackageId;
-    
+
     let inputAmount = tx.pure.u64(sourceAmount.toString());
 
     const LowLimitPrice = BigInt('4295048017');
