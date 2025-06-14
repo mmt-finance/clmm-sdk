@@ -15,6 +15,7 @@ export interface QuoteParams {
   toTokenAddress: string;
   rawAmount: string;
   slippage?: string;
+  excludeDexIds?: string;
 }
 
 export class AggregatorModule implements BaseModule {
