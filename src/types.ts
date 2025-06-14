@@ -168,6 +168,7 @@ export interface ClmmConsts {
   slippageCheckPackageId: string;
   globalConfigId: string;
   versionId: string;
+  mvrName: string;
 }
 
 export interface PoolTokenType {

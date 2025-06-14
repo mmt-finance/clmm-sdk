@@ -57,11 +57,11 @@ export class PoolModule implements BaseModule {
     decimalsY: number,
     useMvr: boolean = true,
   ) {
-    if (useMvr) {
-      txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
-    }
+    useMvr && txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);     
+    const targetPackage = useMvr ? this.sdk.contractConst.mvrName : this.sdk.PackageId;
+    
     const [pool] = txb.moveCall({
-      target: `${this.sdk.PackageId}::create_pool::new`,
+      target: `${targetPackage}::create_pool::new`,
       typeArguments: [coinXType, coinYType],
       arguments: [
         txb.object(this.sdk.contractConst.globalConfigId),
@@ -72,7 +72,7 @@ export class PoolModule implements BaseModule {
 
     const sqrtPrice = TickMath.priceToSqrtPriceX64(new Decimal(price), decimalsX, decimalsY);
     txb.moveCall({
-      target: `${this.sdk.PackageId}::pool::initialize`,
+      target: `${targetPackage}::pool::initialize`,
       typeArguments: [coinXType, coinYType],
       arguments: [
         pool,
@@ -82,7 +82,7 @@ export class PoolModule implements BaseModule {
     });
 
     txb.moveCall({
-      target: `${this.sdk.PackageId}::pool::transfer`,
+      target: `${targetPackage}::pool::transfer`,
       typeArguments: [coinXType, coinYType],
       arguments: [pool],
     });
@@ -98,9 +98,9 @@ export class PoolModule implements BaseModule {
     limitSqrtPrice?: bigint,
     useMvr: boolean = true,
   ) {
-    if (useMvr) {
-      txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
-    }
+    useMvr && txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);     
+    const targetPackage = useMvr ? this.sdk.contractConst.mvrName : this.sdk.PackageId;
+
     const LowLimitPrice = BigInt('4295048017');
     const HighLimitPrice = BigInt('79226673515401279992447579050');
     const poolObject = txb.object(pool.objectId);
@@ -110,7 +110,7 @@ export class PoolModule implements BaseModule {
     }
 
     const [receive_a, receive_b, flash_receipt] = txb.moveCall({
-      target: `${this.sdk.PackageId}::trade::flash_swap`,
+      target: `${targetPackage}::trade::flash_swap`,
       typeArguments: [pool.tokenXType, pool.tokenYType],
       arguments: [
         poolObject,
@@ -136,7 +136,7 @@ export class PoolModule implements BaseModule {
     });
 
     const [coinADebt, coinBDebt] = txb.moveCall({
-      target: `${this.sdk.PackageId}::trade::swap_receipt_debts`,
+      target: `${targetPackage}::trade::swap_receipt_debts`,
       typeArguments: [],
       arguments: [flash_receipt],
     });
@@ -170,7 +170,7 @@ export class PoolModule implements BaseModule {
     });
 
     txb.moveCall({
-      target: `${this.sdk.PackageId}::trade::repay_flash_swap`,
+      target: `${targetPackage}::trade::repay_flash_swap`,
       typeArguments: [pool.tokenXType, pool.tokenYType],
       arguments: [
         poolObject,
@@ -210,12 +210,12 @@ export class PoolModule implements BaseModule {
     transferToAddress?: string,
     useMvr: boolean = true,
   ) {
-    if (useMvr) {
-      txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
-    }
+    useMvr && txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);     
+    const targetPackage = useMvr ? this.sdk.contractConst.mvrName : this.sdk.PackageId;
+
     const LowLimitPrice = 4295048016;
     const [receive_a, receive_b, flash_receipt] = txb.moveCall({
-      target: `${this.sdk.PackageId}::trade::flash_loan`,
+      target: `${targetPackage}::trade::flash_loan`,
       typeArguments: [pool.tokenXType, pool.tokenYType],
       arguments: [
         txb.object(pool.objectId),
@@ -242,7 +242,7 @@ export class PoolModule implements BaseModule {
     const pay_coin_b = zeroCoin;
 
     txb.moveCall({
-      target: `${this.sdk.PackageId}::trade::repay_flash_loan`,
+      target: `${targetPackage}::trade::repay_flash_loan`,
       typeArguments: [pool.tokenXType, pool.tokenYType],
       arguments: [
         txb.object(pool.objectId),
@@ -276,11 +276,11 @@ export class PoolModule implements BaseModule {
     transferToAddress?: string,
     useMvr: boolean = true,
   ) {
-    if (useMvr) {
-      txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
-    }
+    useMvr && txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);     
+    const targetPackage = useMvr ? this.sdk.contractConst.mvrName : this.sdk.PackageId;
+
     const [removeLpCoinA, removeLpCoinB] = txb.moveCall({
-      target: `${this.sdk.PackageId}::liquidity::remove_liquidity`,
+      target: `${targetPackage}::liquidity::remove_liquidity`,
       typeArguments: [pool.tokenXType, pool.tokenYType],
       arguments: [
         txb.object(pool.objectId),
@@ -311,11 +311,11 @@ export class PoolModule implements BaseModule {
     transferToAddress?: string,
     useMvr: boolean = true,
   ) {
-    if (useMvr) {
-      txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
-    }
+    useMvr && txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);     
+    const targetPackage = useMvr ? this.sdk.contractConst.mvrName : this.sdk.PackageId;
+
     const [coinA, coinB] = txb.moveCall({
-      target: `${this.sdk.PackageId}::liquidity::add_liquidity`,
+      target: `${targetPackage}::liquidity::add_liquidity`,
       typeArguments: [pool.tokenXType, pool.tokenYType],
       arguments: [
         txb.object(pool.objectId),
@@ -358,9 +358,9 @@ export class PoolModule implements BaseModule {
     limitSqrtPrice?: bigint,
     useMvr: boolean = true,
   ) {
-    if (useMvr) {
-      txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
-    }
+    useMvr && txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);     
+    const targetPackage = useMvr ? this.sdk.contractConst.mvrName : this.sdk.PackageId;
+
     const LowLimitPrice = BigInt('4295048017');
     const HighLimitPrice = BigInt('79226673515401279992447579050');
 
@@ -375,7 +375,7 @@ export class PoolModule implements BaseModule {
     });
 
     const [swapAmount, remainingA] = txb.moveCall({
-      target: `${this.sdk.PackageId}::trade::get_optimal_swap_amount_for_single_sided_liquidity`,
+      target: `${targetPackage}::trade::get_optimal_swap_amount_for_single_sided_liquidity`,
       typeArguments: [pool.tokenXType, pool.tokenYType],
       arguments: [
         txb.object(pool.objectId),
@@ -392,7 +392,7 @@ export class PoolModule implements BaseModule {
     const outputCoin = this.swap(txb, pool, swapAmount, swapCoin, isXtoY, null, limitSqrtPrice);
 
     const [coinAOut, coinBOut] = txb.moveCall({
-      target: `${this.sdk.PackageId}::liquidity::add_liquidity`,
+      target: `${targetPackage}::liquidity::add_liquidity`,
       typeArguments: [pool.tokenXType, pool.tokenYType],
       arguments: [
         txb.object(pool.objectId),
@@ -431,11 +431,11 @@ export class PoolModule implements BaseModule {
     transferToAddress?: string,
     useMvr: boolean = true,
   ) {
-    if (useMvr) {
-      txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
-    }
+    useMvr && txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);     
+    const targetPackage = useMvr ? this.sdk.contractConst.mvrName : this.sdk.PackageId;
+
     const [feeCoinA, feeCoinB] = txb.moveCall({
-      target: `${this.sdk.PackageId}::collect::fee`,
+      target: `${targetPackage}::collect::fee`,
       arguments: [
         txb.object(pool.objectId),
         txnArgument(positionId, txb),
@@ -460,11 +460,11 @@ export class PoolModule implements BaseModule {
     transferToAddress?: string,
     useMvr: boolean = true,
   ) {
-    if (useMvr) {
-      txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
-    }
+    useMvr && txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);     
+    const targetPackage = useMvr ? this.sdk.contractConst.mvrName : this.sdk.PackageId;
+
     const [rewardCoin] = txb.moveCall({
-      target: `${this.sdk.PackageId}::collect::reward`,
+      target: `${targetPackage}::collect::reward`,
       arguments: [
         txb.object(pool.objectId),
         txnArgument(positionId, txb),
@@ -489,9 +489,9 @@ export class PoolModule implements BaseModule {
     transferToAddress?: string,
     useMvr: boolean = true,
   ) {
-    if (useMvr) {
-      txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
-    }
+    useMvr && txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);     
+    const targetPackage = useMvr ? this.sdk.contractConst.mvrName : this.sdk.PackageId;
+
     const rewardCoins = [];
     rewarders.map((item) => {
       const rewardCoinType = item.coin_type;
@@ -523,6 +523,7 @@ export class PoolModule implements BaseModule {
   public async fetchRewardsAndFee(positions: any, pools: ExtendedPool[], address: string) {
     const txb = new Transaction();
     txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
+    const targetPackage = this.sdk.contractConst.mvrName || this.sdk.PackageId;
 
     positions.map((position: any) => {
       const positionData = position.fields;
@@ -535,7 +536,7 @@ export class PoolModule implements BaseModule {
       if (rewarders?.length > 0) {
         rewarders.map((item) => {
           const rewardCoin = txb.moveCall({
-            target: `${this.sdk.PackageId}::collect::reward`,
+            target: `${targetPackage}::collect::reward`,
             arguments: [
               txb.object(pool_id),
               txnArgument(pos_id, txb),
@@ -549,7 +550,7 @@ export class PoolModule implements BaseModule {
         txb.transferObjects(rewardCoins, txb.pure.address(address));
       }
       const [feeCoinA, feeCoinB] = txb.moveCall({
-        target: `${this.sdk.PackageId}::collect::fee`,
+        target: `${targetPackage}::collect::fee`,
         arguments: [
           txb.object(pool_id),
           txnArgument(pos_id, txb),
@@ -568,6 +569,7 @@ export class PoolModule implements BaseModule {
     range: number,
     txb: Transaction,
     transferToAddress: string,
+    useMvr: boolean = true,
   ) {
     try {
       const oldPoolId = '0x22e7b3c2d6671d208efb36a32a0a72528e60f9dd33fc71df07ea0ae3df011144';
@@ -583,11 +585,13 @@ export class PoolModule implements BaseModule {
         tokenYType: typeB,
       } as PoolParams;
 
+      const targetPackage = useMvr ? this.sdk.contractConst.mvrName : this.sdk.PackageId;
+
       var { feeCoinA, feeCoinB } = this.collectFee(txb, oldPoolParams, vSuiPositionId);
       var vSuiRewardCoin = this.collectReward(txb, oldPoolParams, vSuiPositionId, typeA);
 
       const oldLiquidity = txb.moveCall({
-        target: `${this.sdk.PackageId}::position::liquidity`,
+        target: `${targetPackage}::position::liquidity`,
         arguments: [txnArgument(vSuiPositionId, txb)],
       });
       let { removeLpCoinA, removeLpCoinB } = this.removeLiquidity(
@@ -1215,6 +1219,8 @@ export class PoolModule implements BaseModule {
   }
 
   public async preSwap(tx: Transaction, pools: PreSwapParam[], sourceAmount: any) {
+    const targetPackage = this.sdk.contractConst.mvrName || this.sdk.PackageId;
+    
     let inputAmount = tx.pure.u64(sourceAmount.toString());
 
     const LowLimitPrice = BigInt('4295048017');
@@ -1225,7 +1231,7 @@ export class PoolModule implements BaseModule {
       const isXtoY = pool.isXtoY;
 
       const swapResult = tx.moveCall({
-        target: `${this.sdk.PackageId}::trade::compute_swap_result`,
+        target: `${targetPackage}::trade::compute_swap_result`,
         typeArguments: [tokenXType, tokenYType],
         arguments: [
           tx.object(pool.poolId),
@@ -1237,7 +1243,7 @@ export class PoolModule implements BaseModule {
       });
 
       inputAmount = tx.moveCall({
-        target: `${this.sdk.PackageId}::trade::get_state_amount_calculated`,
+        target: `${targetPackage}::trade::get_state_amount_calculated`,
         arguments: [swapResult],
       });
     }
