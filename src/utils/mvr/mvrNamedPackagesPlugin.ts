@@ -15,11 +15,7 @@ import {
   populateNamedTypesFromCache,
   replaceNames,
 } from './utils';
-import { MvrCacheManager } from './mvrCacheManager';
 import { mvrCacheLocal } from './mvr-cache-local';
-
-const mvrPackageLocalCache: Record<string, { value: string; expiresAt: number }> = {};
-const mvrTypesLocalCache: Record<string, { value: string; expiresAt: number }> = {};
 
 export type NamedPackagesPluginOptions = {
   /**
@@ -50,8 +46,6 @@ export type NamedPackagesPluginOptions = {
    */
   overrides?: NamedPackagesPluginCache;
 };
-
-const CACHE_TTL_MS = 60 * 1000;
 
 /**
  * @experimental This plugin is in experimental phase and there might be breaking changes in the future

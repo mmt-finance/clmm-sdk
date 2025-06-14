@@ -6,6 +6,7 @@ import { SuiClient } from '@mysten/sui/client';
 import { RouteModule } from './modules/routeModule';
 import { AggregatorModule } from './modules/aggregatorModule';
 import { namedPackagesPlugin } from './utils/mvr/mvrNamedPackagesPlugin';
+import { BuildTransactionOptions, TransactionDataBuilder } from '@mysten/sui/transactions';
 
 export class MmtSDK {
   protected readonly rpcModule: SuiClient;
@@ -24,7 +25,11 @@ export class MmtSDK {
 
   public readonly customHeaders?: HeadersInit;
 
-  public readonly mvrNamedPackagesPlugin: any;
+  public readonly mvrNamedPackagesPlugin: (
+    transactionData: TransactionDataBuilder,
+    _buildOptions: BuildTransactionOptions,
+    next: () => Promise<void>,
+  ) => Promise<void>;
 
   /**
    * @deprecated use MmtSDK.NEW instead

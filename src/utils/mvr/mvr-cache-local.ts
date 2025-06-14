@@ -25,7 +25,7 @@ export class MvrCacheLocal {
       types: {},
     };
 
-    const copyFromOverrides = (source: Record<string, any>, target: Record<string, any>) => {
+    const copyFromOverrides = (source: Record<string, string>, target: Record<string, string>) => {
       for (const [key, value] of Object.entries(source)) {
         if (key && value) {
           target[key] = value;
@@ -44,7 +44,7 @@ export class MvrCacheLocal {
     copyFromOverrides(overrides.types, res.types);
 
     copyFromThis(this.packageCache, res.packages);
-    copyFromThis(this.typeCache, res.packages);
+    copyFromThis(this.typeCache, res.types);
 
     return res;
   }
