@@ -104,9 +104,6 @@ export const namedPackagesPlugin = ({
       resolveTypes(unresolvedTypes, url, pageSize),
     ]);
 
-    console.log('packages:', packages);
-    console.log('types:', types);
-
     // save first-level mappings to cache.
     Object.entries(packages).forEach(([key, val]) => {
       cache.packages[key] = val;
@@ -152,10 +149,6 @@ export const namedPackagesPlugin = ({
   };
 
   function isCacheValid(entry?: { value: string; expiresAt: number }): boolean {
-    console.log('entry:', entry);
-    console.log(!!entry && entry.expiresAt > Date.now());
-    console.log('now:', Date.now());
-    console.log('!!entry:', !!entry);
     return !!entry && entry.expiresAt > Date.now();
   }
 
