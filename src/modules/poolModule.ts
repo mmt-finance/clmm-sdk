@@ -34,6 +34,7 @@ import Decimal from 'decimal.js';
 import { convertI32ToSigned, TickMath } from '../utils/math/tickMath';
 import { MathUtil } from '../utils/math/commonMath';
 import { bcs } from '@mysten/sui/bcs';
+import { applyMvrPluginAndGetTargetPackage } from '../utils/mvr/utils';
 
 export const Q_64 = '18446744073709551616';
 export class PoolModule implements BaseModule {
@@ -57,8 +58,7 @@ export class PoolModule implements BaseModule {
     decimalsY: number,
     useMvr: boolean = true,
   ) {
-    useMvr && txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
-    const targetPackage = useMvr ? this.sdk.contractConst.mvrName : this.sdk.PackageId;
+    const targetPackage = applyMvrPluginAndGetTargetPackage(txb, useMvr);
 
     const [pool] = txb.moveCall({
       target: `${targetPackage}::create_pool::new`,
@@ -98,8 +98,7 @@ export class PoolModule implements BaseModule {
     limitSqrtPrice?: bigint,
     useMvr: boolean = true,
   ) {
-    useMvr && txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
-    const targetPackage = useMvr ? this.sdk.contractConst.mvrName : this.sdk.PackageId;
+    const targetPackage = applyMvrPluginAndGetTargetPackage(txb, useMvr);
 
     const LowLimitPrice = BigInt('4295048017');
     const HighLimitPrice = BigInt('79226673515401279992447579050');
@@ -210,8 +209,7 @@ export class PoolModule implements BaseModule {
     transferToAddress?: string,
     useMvr: boolean = true,
   ) {
-    useMvr && txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
-    const targetPackage = useMvr ? this.sdk.contractConst.mvrName : this.sdk.PackageId;
+    const targetPackage = applyMvrPluginAndGetTargetPackage(txb, useMvr);
 
     const LowLimitPrice = 4295048016;
     const [receive_a, receive_b, flash_receipt] = txb.moveCall({
@@ -276,8 +274,7 @@ export class PoolModule implements BaseModule {
     transferToAddress?: string,
     useMvr: boolean = true,
   ) {
-    useMvr && txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
-    const targetPackage = useMvr ? this.sdk.contractConst.mvrName : this.sdk.PackageId;
+    const targetPackage = applyMvrPluginAndGetTargetPackage(txb, useMvr);
 
     const [removeLpCoinA, removeLpCoinB] = txb.moveCall({
       target: `${targetPackage}::liquidity::remove_liquidity`,
@@ -311,8 +308,7 @@ export class PoolModule implements BaseModule {
     transferToAddress?: string,
     useMvr: boolean = true,
   ) {
-    useMvr && txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
-    const targetPackage = useMvr ? this.sdk.contractConst.mvrName : this.sdk.PackageId;
+    const targetPackage = applyMvrPluginAndGetTargetPackage(txb, useMvr);
 
     const [coinA, coinB] = txb.moveCall({
       target: `${targetPackage}::liquidity::add_liquidity`,
@@ -358,8 +354,7 @@ export class PoolModule implements BaseModule {
     limitSqrtPrice?: bigint,
     useMvr: boolean = true,
   ) {
-    useMvr && txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
-    const targetPackage = useMvr ? this.sdk.contractConst.mvrName : this.sdk.PackageId;
+    const targetPackage = applyMvrPluginAndGetTargetPackage(txb, useMvr);
 
     const LowLimitPrice = BigInt('4295048017');
     const HighLimitPrice = BigInt('79226673515401279992447579050');
@@ -431,8 +426,7 @@ export class PoolModule implements BaseModule {
     transferToAddress?: string,
     useMvr: boolean = true,
   ) {
-    useMvr && txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
-    const targetPackage = useMvr ? this.sdk.contractConst.mvrName : this.sdk.PackageId;
+    const targetPackage = applyMvrPluginAndGetTargetPackage(txb, useMvr);
 
     const [feeCoinA, feeCoinB] = txb.moveCall({
       target: `${targetPackage}::collect::fee`,
@@ -460,8 +454,7 @@ export class PoolModule implements BaseModule {
     transferToAddress?: string,
     useMvr: boolean = true,
   ) {
-    useMvr && txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
-    const targetPackage = useMvr ? this.sdk.contractConst.mvrName : this.sdk.PackageId;
+    const targetPackage = applyMvrPluginAndGetTargetPackage(txb, useMvr);
 
     const [rewardCoin] = txb.moveCall({
       target: `${targetPackage}::collect::reward`,
@@ -489,9 +482,6 @@ export class PoolModule implements BaseModule {
     transferToAddress?: string,
     useMvr: boolean = true,
   ) {
-    useMvr && txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
-    const targetPackage = useMvr ? this.sdk.contractConst.mvrName : this.sdk.PackageId;
-
     const rewardCoins = [];
     rewarders.map((item) => {
       const rewardCoinType = item.coin_type;
@@ -522,8 +512,7 @@ export class PoolModule implements BaseModule {
 
   public async fetchRewardsAndFee(positions: any, pools: ExtendedPool[], address: string) {
     const txb = new Transaction();
-    txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
-    const targetPackage = this.sdk.contractConst.mvrName || this.sdk.PackageId;
+    const targetPackage = applyMvrPluginAndGetTargetPackage(txb, true);
 
     positions.map((position: any) => {
       const positionData = position.fields;
@@ -585,7 +574,7 @@ export class PoolModule implements BaseModule {
         tokenYType: typeB,
       } as PoolParams;
 
-      const targetPackage = useMvr ? this.sdk.contractConst.mvrName : this.sdk.PackageId;
+      const targetPackage = applyMvrPluginAndGetTargetPackage(txb, useMvr);
 
       var { feeCoinA, feeCoinB } = this.collectFee(txb, oldPoolParams, vSuiPositionId);
       var vSuiRewardCoin = this.collectReward(txb, oldPoolParams, vSuiPositionId, typeA);
@@ -816,7 +805,7 @@ export class PoolModule implements BaseModule {
     return allTickLiquidities;
   }
 
-  public async fetchTickLiquiditity(
+  public async fetchTickLiquidity(
     poolId: string,
     offset: number,
     limit: number,
@@ -1219,7 +1208,7 @@ export class PoolModule implements BaseModule {
   }
 
   public async preSwap(tx: Transaction, pools: PreSwapParam[], sourceAmount: any) {
-    const targetPackage = this.sdk.contractConst.mvrName || this.sdk.PackageId;
+    const targetPackage = applyMvrPluginAndGetTargetPackage(tx, true);
 
     let inputAmount = tx.pure.u64(sourceAmount.toString());
 

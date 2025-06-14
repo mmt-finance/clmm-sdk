@@ -14,6 +14,7 @@ import { BN } from 'bn.js';
 import { getPositionStatus } from '../utils/positionUtils';
 import { SuiClient } from '@mysten/sui/dist/cjs/client';
 import { MathUtil } from '../utils/math/commonMath';
+import { applyMvrPluginAndGetTargetPackage } from '../utils/mvr/utils';
 
 export class PositionModule implements BaseModule {
   protected _sdk: MmtSDK;
@@ -34,8 +35,7 @@ export class PositionModule implements BaseModule {
     transferToAddress?: string,
     useMvr: boolean = true,
   ) {
-    useMvr && txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
-    const targetPackage = useMvr ? this.sdk.contractConst.mvrName : this.sdk.PackageId;
+    const targetPackage = applyMvrPluginAndGetTargetPackage(txb, useMvr);
 
     const [lowerTick1] = txb.moveCall({
       target: `${targetPackage}::tick_math::get_tick_at_sqrt_price`,
@@ -100,8 +100,7 @@ export class PositionModule implements BaseModule {
     positionId: string | TransactionArgument,
     useMvr: boolean = true,
   ) {
-    useMvr && txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
-    const targetPackage = useMvr ? this.sdk.contractConst.mvrName : this.sdk.PackageId;
+    const targetPackage = applyMvrPluginAndGetTargetPackage(txb, useMvr);
 
     txb.moveCall({
       target: `${targetPackage}::liquidity::close_position`,
@@ -115,8 +114,7 @@ export class PositionModule implements BaseModule {
     reward_growth_inside: number[],
     useMvr: boolean = true,
   ) {
-    useMvr && txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
-    const targetPackage = useMvr ? this.sdk.contractConst.mvrName : this.sdk.PackageId;
+    const targetPackage = applyMvrPluginAndGetTargetPackage(txb, useMvr);
 
     txb.moveCall({
       target: `${targetPackage}::position::update_reward_infos`,
@@ -138,8 +136,7 @@ export class PositionModule implements BaseModule {
     reward_index: number,
     useMvr: boolean = true,
   ) {
-    useMvr && txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
-    const targetPackage = useMvr ? this.sdk.contractConst.mvrName : this.sdk.PackageId;
+    const targetPackage = applyMvrPluginAndGetTargetPackage(txb, useMvr);
 
     const [rewardinfoObj] = txb.moveCall({
       target: `${targetPackage}::position::try_borrow_mut_reward_info`,

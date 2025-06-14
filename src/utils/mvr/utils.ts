@@ -1,7 +1,7 @@
 // Copyright (c) Mysten Labs, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { TransactionDataBuilder } from '@mysten/sui/transactions';
+import { Transaction, TransactionDataBuilder } from '@mysten/sui/transactions';
 import {
   isValidNamedPackage,
   isValidNamedType,
@@ -251,4 +251,12 @@ function isStructTag(type: string | StructTag): type is StructTag {
     'name' in type &&
     'typeParams' in type
   );
+}
+
+export function applyMvrPluginAndGetTargetPackage(txb: Transaction, useMvr: boolean): string {
+  if (useMvr) {
+    txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
+    return this.sdk.contractConst.mvrName;
+  }
+  return this.sdk.PackageId;
 }
