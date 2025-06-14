@@ -16,6 +16,7 @@ import {
   replaceNames,
 } from './utils';
 import { MvrCacheManager } from './mvrCacheManager';
+import { mvrCacheLocal } from './mvr-cache-local';
 
 const mvrPackageLocalCache: Record<string, { value: string; expiresAt: number }> = {};
 const mvrTypesLocalCache: Record<string, { value: string; expiresAt: number }> = {};
@@ -80,7 +81,7 @@ export const namedPackagesPlugin = ({
     }
   });
 
-  const cache = overrides;
+  const cache = mvrCacheLocal.mergeWithOverrides(overrides);
 
   return async (
     transactionData: TransactionDataBuilder,
@@ -89,25 +90,24 @@ export const namedPackagesPlugin = ({
   ) => {
     const names = findNamesInTransaction(transactionData);
 
-    const unresolvedPackages = names.packages.filter(
-      (name) => !cache.packages[name] && !isCacheValid(mvrPackageLocalCache[name]),
-    );
-
-    const unresolvedTypes = [...getFirstLevelNamedTypes(names.types)].filter(
-      (name) => !cache.types[name] && !isCacheValid(mvrTypesLocalCache[name]),
-    );
-
     const [packages, types] = await Promise.all([
-      resolvePackages(unresolvedPackages, url, pageSize),
-      resolveTypes(unresolvedTypes, url, pageSize),
+      resolvePackages(
+        names.packages.filter((x) => !cache.packages[x]),
+        url,
+        pageSize,
+      ),
+      resolveTypes(
+        [...getFirstLevelNamedTypes(names.types)].filter((x) => !cache.types[x]),
+        url,
+        pageSize,
+      ),
     ]);
-
     // save first-level mappings to cache.
-    MvrCacheManager.add(cache.packages, mvrPackageLocalCache, packages, CACHE_TTL_MS);
-    MvrCacheManager.add(cache.types, mvrTypesLocalCache, types, CACHE_TTL_MS);
+    Object.assign(cache.packages, packages);
+    Object.assign(cache.types, types);
 
-    MvrCacheManager.mergeMissingFromLocal(cache.packages, mvrPackageLocalCache, names.packages);
-    MvrCacheManager.mergeMissingFromLocal(cache.types, mvrTypesLocalCache, names.types);
+    // Also write the result to local cache
+    mvrCacheLocal.addFetchedResult({ packages, types });
 
     const composedTypes = populateNamedTypesFromCache(names.types, cache.types);
 
@@ -120,10 +120,6 @@ export const namedPackagesPlugin = ({
 
     await next();
   };
-
-  function isCacheValid(entry?: { value: string; expiresAt: number }): boolean {
-    return !!entry && entry.expiresAt > Date.now();
-  }
 
   // eslint-disable-next-line @typescript-eslint/no-shadow
   async function resolvePackages(packages: string[], apiUrl: string, pageSize: number) {
