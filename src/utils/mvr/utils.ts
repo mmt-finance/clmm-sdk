@@ -8,6 +8,7 @@ import {
   normalizeStructTag,
   parseStructTag,
 } from '@mysten/sui/utils';
+import { MmtSDK } from '../../sdk';
 
 export type NamedPackagesPluginCache = {
   packages: Record<string, string>;
@@ -253,10 +254,14 @@ function isStructTag(type: string | StructTag): type is StructTag {
   );
 }
 
-export function applyMvrPluginAndGetTargetPackage(txb: Transaction, useMvr: boolean): string {
+export function applyMvrPluginAndGetTargetPackage(
+  txb: Transaction,
+  sdk: MmtSDK,
+  useMvr: boolean,
+): string {
   if (useMvr) {
-    txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
-    return this.sdk.contractConst.mvrName;
+    txb.addSerializationPlugin(sdk.mvrNamedPackagesPlugin);
+    return sdk.contractConst.mvrName;
   }
-  return this.sdk.PackageId;
+  return sdk.PackageId;
 }

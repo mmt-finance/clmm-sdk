@@ -15,6 +15,7 @@ import {
   populateNamedTypesFromCache,
   replaceNames,
 } from './utils';
+import { MvrCacheManager } from './mvrCacheManager';
 
 const mvrPackageLocalCache: Record<string, { value: string; expiresAt: number }> = {};
 const mvrTypesLocalCache: Record<string, { value: string; expiresAt: number }> = {};
@@ -96,45 +97,17 @@ export const namedPackagesPlugin = ({
       (name) => !cache.types[name] && !isCacheValid(mvrTypesLocalCache[name]),
     );
 
-    console.log('unresolvedPackages:', unresolvedPackages);
-    console.log('unresolvedTypes:', unresolvedTypes);
-
     const [packages, types] = await Promise.all([
       resolvePackages(unresolvedPackages, url, pageSize),
       resolveTypes(unresolvedTypes, url, pageSize),
     ]);
 
     // save first-level mappings to cache.
-    Object.entries(packages).forEach(([key, val]) => {
-      cache.packages[key] = val;
-      mvrPackageLocalCache[key] = {
-        value: val,
-        expiresAt: Date.now() + CACHE_TTL_MS,
-      };
-    });
+    MvrCacheManager.add(cache.packages, mvrPackageLocalCache, packages, CACHE_TTL_MS);
+    MvrCacheManager.add(cache.types, mvrTypesLocalCache, types, CACHE_TTL_MS);
 
-    Object.entries(types).forEach(([key, val]) => {
-      cache.types[key] = val;
-      mvrTypesLocalCache[key] = {
-        value: val,
-        expiresAt: Date.now() + CACHE_TTL_MS,
-      };
-    });
-
-    names.packages.forEach((name) => {
-      if (!cache.packages[name] && isCacheValid(mvrPackageLocalCache[name])) {
-        cache.packages[name] = mvrPackageLocalCache[name]!.value;
-      }
-    });
-
-    names.types.forEach((name) => {
-      if (!cache.types[name] && isCacheValid(mvrTypesLocalCache[name])) {
-        cache.types[name] = mvrTypesLocalCache[name]!.value;
-      }
-    });
-
-    console.log('mvrPackageLocalCache:', mvrPackageLocalCache);
-    console.log('mvrTypesLocalCache:', mvrTypesLocalCache);
+    MvrCacheManager.mergeMissingFromLocal(cache.packages, mvrPackageLocalCache, names.packages);
+    MvrCacheManager.mergeMissingFromLocal(cache.types, mvrTypesLocalCache, names.types);
 
     const composedTypes = populateNamedTypesFromCache(names.types, cache.types);
 
