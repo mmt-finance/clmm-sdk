@@ -15,6 +15,7 @@ export interface QuoteParams {
   toTokenAddress: string;
   rawAmount: string;
   slippage?: string;
+  excludeDexIds?: string[];
 }
 
 export class AggregatorModule implements BaseModule {
@@ -113,7 +114,14 @@ export class AggregatorModule implements BaseModule {
     const defaultHeaders = { 'Content-Type': 'application/json' };
     const mergedHeaders = { ...defaultHeaders, ...headers };
     const url = new URL(`${baseUrl}/aggregator/quote`);
-    Object.keys(params).forEach((key) => url.searchParams.append(key, params[key]));
+    if (params.excludeDexIds) {
+      url.searchParams.append('excludeDexIds', params.excludeDexIds.join(','));
+    }
+    Object.keys(params).forEach((key) => {
+      if (key !== 'excludeDexIds') {
+        url.searchParams.append(key, params[key]);
+      }
+    });
 
     const options = {
       method: 'GET',
