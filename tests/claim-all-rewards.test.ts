@@ -8,7 +8,7 @@ describe('PoolModule.collectAllPoolsRewards', () => {
 
   beforeEach(() => {
     sdk = MmtSDK.NEW({
-      network: 'testnet',
+      network: 'mainnet',
     });
   });
 
@@ -21,9 +21,9 @@ describe('PoolModule.collectAllPoolsRewards', () => {
       senderAddress,
     );
     const positions = objects.filter(
-      (obj: any) => obj.type === `${sdk.PackageId}::position::Position`,
+      (obj: any) => obj.type === `${sdk.contractConst.publishedAt}::position::Position`,
     );
-    const pools = await sdk.Pool.getAllPools(); // Get AllPools detail using sdk
+    const pools = await sdk.Pool.getAllPools();
 
     positions.map((position: any) => {
       const positionData = position.fields;

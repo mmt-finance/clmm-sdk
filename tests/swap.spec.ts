@@ -9,11 +9,11 @@ import { describe, test, beforeEach, expect } from '@jest/globals';
 describe('PoolModule.swap', () => {
   let sdk: MmtSDK;
   let poolModule: PoolModule;
-  const suiClientUrl = 'https://fullnode.testnet.sui.io:443';
+  const suiClientUrl = 'https://fullnode.mainnet.sui.io:443';
 
   beforeEach(() => {
     sdk = MmtSDK.NEW({
-      network: 'testnet',
+      network: 'mainnet',
       suiClientUrl: suiClientUrl,
     });
 
@@ -23,7 +23,7 @@ describe('PoolModule.swap', () => {
   test('should execute swap correctly', async () => {
     const client = new SuiClient({ url: suiClientUrl });
     const txb = new Transaction();
-    const poolId = '0x53ceda0bbe1bdb3c1c0b1c53ecb49856f135a9fffc91e5a50aa4045a3f8240f7';
+    const poolId = '0x455cf8d2ac91e7cb883f515874af750ed3cd18195c970b7a2d46235ac2b0c388';
     const pool = await poolModule.getPool(poolId);
     if (!pool) {
       throw new Error('Pool not found');

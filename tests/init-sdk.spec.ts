@@ -33,6 +33,7 @@ describe('MmtSDK', () => {
       slippageCheckPackageId: '0x..',
       globalConfigId: '0x..',
       versionId: '0x..',
+      mvrName: '@mmt/clmm-core',
     };
     const mmtApiUrl = 'https://testnet.mmtapi.com';
     const suiClientUrl = 'https://fullnode.testnet.sui.io:443';

@@ -7,9 +7,11 @@ export const MainnetConfig = {
     slippageCheckPackageId: '0x8add2f0f8bc9748687639d7eb59b2172ba09a0172d9e63c029e23a7dbdb6abe6',
     globalConfigId: '0x9889f38f107f5807d34c547828f4a1b4d814450005a4517a58a1ad476458abfc',
     versionId: '0x2375a0b1ec12010aaea3b2545acfa2ad34cfbba03ce4b59f4c39e1e25eed1b2a',
+    mvrName: '@mmt/clmm-core',
   },
   mmtApiUrl: 'https://api.mmt.finance',
   suiClientUrl: 'https://fullnode.mainnet.sui.io:443',
+  mvrEndpoint: 'https://mainnet.mvr.mystenlabs.com',
 };
 
 export const TestnetConfig = {
@@ -21,9 +23,11 @@ export const TestnetConfig = {
     slippageCheckPackageId: '0xfd6a45c396a90811fd93efaf585cc95c29aecd079c87822893f1e97e3fee8c50',
     globalConfigId: '0x3c4385bf373c7997a953ee548f45188d9f1ca4284ec835467688d8ee276e1af7',
     versionId: '0x83ea3e3e7384efd6b524ff973e4b627cd84d190c45d3f4fd9f5f4fc6c95fd26b',
+    mvrName: '',
   },
   mmtApiUrl: 'https://api-dev.mmt.finance',
   suiClientUrl: 'https://fullnode.testnet.sui.io:443',
+  mvrEndpoint: 'https://testnet.mvr.mystenlabs.com',
 };
 export class Config {
   static getDefaultClmmParams(network: string) {
@@ -47,6 +51,14 @@ export class Config {
       return TestnetConfig.suiClientUrl;
     } else {
       return MainnetConfig.suiClientUrl;
+    }
+  }
+
+  static getDefaultMvrEndpoint(network: string) {
+    if (network === 'testnet') {
+      return TestnetConfig.mvrEndpoint;
+    } else {
+      return MainnetConfig.mvrEndpoint;
     }
   }
 }
