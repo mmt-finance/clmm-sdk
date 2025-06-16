@@ -254,11 +254,7 @@ function isStructTag(type: string | StructTag): type is StructTag {
   );
 }
 
-export function applyMvrPluginAndGetTargetPackage(
-  txb: Transaction,
-  sdk: MmtSDK,
-  useMvr: boolean,
-): string {
+export function applyMvrPackage(txb: Transaction, sdk: MmtSDK, useMvr: boolean): string {
   if (useMvr) {
     txb.addSerializationPlugin(sdk.mvrNamedPackagesPlugin);
     return sdk.contractConst.mvrName;

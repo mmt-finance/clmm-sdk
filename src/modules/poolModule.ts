@@ -34,7 +34,7 @@ import Decimal from 'decimal.js';
 import { convertI32ToSigned, TickMath } from '../utils/math/tickMath';
 import { MathUtil } from '../utils/math/commonMath';
 import { bcs } from '@mysten/sui/bcs';
-import { applyMvrPluginAndGetTargetPackage } from '../utils/mvr/utils';
+import { applyMvrPackage } from '../utils/mvr/utils';
 
 export const Q_64 = '18446744073709551616';
 export class PoolModule implements BaseModule {
@@ -58,7 +58,7 @@ export class PoolModule implements BaseModule {
     decimalsY: number,
     useMvr: boolean = true,
   ) {
-    const targetPackage = applyMvrPluginAndGetTargetPackage(txb, this.sdk, useMvr);
+    const targetPackage = applyMvrPackage(txb, this.sdk, useMvr);
 
     const [pool] = txb.moveCall({
       target: `${targetPackage}::create_pool::new`,
@@ -98,7 +98,7 @@ export class PoolModule implements BaseModule {
     limitSqrtPrice?: bigint,
     useMvr: boolean = true,
   ) {
-    const targetPackage = applyMvrPluginAndGetTargetPackage(txb, this.sdk, useMvr);
+    const targetPackage = applyMvrPackage(txb, this.sdk, useMvr);
 
     const LowLimitPrice = BigInt('4295048017');
     const HighLimitPrice = BigInt('79226673515401279992447579050');
@@ -209,7 +209,7 @@ export class PoolModule implements BaseModule {
     transferToAddress?: string,
     useMvr: boolean = true,
   ) {
-    const targetPackage = applyMvrPluginAndGetTargetPackage(txb, this.sdk, useMvr);
+    const targetPackage = applyMvrPackage(txb, this.sdk, useMvr);
 
     const LowLimitPrice = 4295048016;
     const [receive_a, receive_b, flash_receipt] = txb.moveCall({
@@ -274,7 +274,7 @@ export class PoolModule implements BaseModule {
     transferToAddress?: string,
     useMvr: boolean = true,
   ) {
-    const targetPackage = applyMvrPluginAndGetTargetPackage(txb, this.sdk, useMvr);
+    const targetPackage = applyMvrPackage(txb, this.sdk, useMvr);
 
     const [removeLpCoinA, removeLpCoinB] = txb.moveCall({
       target: `${targetPackage}::liquidity::remove_liquidity`,
@@ -308,7 +308,7 @@ export class PoolModule implements BaseModule {
     transferToAddress?: string,
     useMvr: boolean = true,
   ) {
-    const targetPackage = applyMvrPluginAndGetTargetPackage(txb, this.sdk, useMvr);
+    const targetPackage = applyMvrPackage(txb, this.sdk, useMvr);
 
     const [coinA, coinB] = txb.moveCall({
       target: `${targetPackage}::liquidity::add_liquidity`,
@@ -354,7 +354,7 @@ export class PoolModule implements BaseModule {
     limitSqrtPrice?: bigint,
     useMvr: boolean = true,
   ) {
-    const targetPackage = applyMvrPluginAndGetTargetPackage(txb, this.sdk, useMvr);
+    const targetPackage = applyMvrPackage(txb, this.sdk, useMvr);
 
     const LowLimitPrice = BigInt('4295048017');
     const HighLimitPrice = BigInt('79226673515401279992447579050');
@@ -426,7 +426,7 @@ export class PoolModule implements BaseModule {
     transferToAddress?: string,
     useMvr: boolean = true,
   ) {
-    const targetPackage = applyMvrPluginAndGetTargetPackage(txb, this.sdk, useMvr);
+    const targetPackage = applyMvrPackage(txb, this.sdk, useMvr);
 
     const [feeCoinA, feeCoinB] = txb.moveCall({
       target: `${targetPackage}::collect::fee`,
@@ -454,7 +454,7 @@ export class PoolModule implements BaseModule {
     transferToAddress?: string,
     useMvr: boolean = true,
   ) {
-    const targetPackage = applyMvrPluginAndGetTargetPackage(txb, this.sdk, useMvr);
+    const targetPackage = applyMvrPackage(txb, this.sdk, useMvr);
 
     const [rewardCoin] = txb.moveCall({
       target: `${targetPackage}::collect::reward`,
@@ -511,7 +511,7 @@ export class PoolModule implements BaseModule {
 
   public async fetchRewardsAndFee(positions: any, pools: ExtendedPool[], address: string) {
     const txb = new Transaction();
-    const targetPackage = applyMvrPluginAndGetTargetPackage(txb, this.sdk, true);
+    const targetPackage = applyMvrPackage(txb, this.sdk, true);
 
     positions.map((position: any) => {
       const positionData = position.fields;
@@ -573,7 +573,7 @@ export class PoolModule implements BaseModule {
         tokenYType: typeB,
       } as PoolParams;
 
-      const targetPackage = applyMvrPluginAndGetTargetPackage(txb, this.sdk, useMvr);
+      const targetPackage = applyMvrPackage(txb, this.sdk, useMvr);
 
       var { feeCoinA, feeCoinB } = this.collectFee(txb, oldPoolParams, vSuiPositionId);
       var vSuiRewardCoin = this.collectReward(txb, oldPoolParams, vSuiPositionId, typeA);
@@ -1207,7 +1207,7 @@ export class PoolModule implements BaseModule {
   }
 
   public async preSwap(tx: Transaction, pools: PreSwapParam[], sourceAmount: any) {
-    const targetPackage = applyMvrPluginAndGetTargetPackage(tx, this.sdk, true);
+    const targetPackage = applyMvrPackage(tx, this.sdk, true);
 
     let inputAmount = tx.pure.u64(sourceAmount.toString());
 
