@@ -14,6 +14,7 @@ import { BN } from 'bn.js';
 import { getPositionStatus } from '../utils/positionUtils';
 import { SuiClient } from '@mysten/sui/dist/cjs/client';
 import { MathUtil } from '../utils/math/commonMath';
+import { applyMvrPackage } from '../utils/mvr/utils';
 
 export class PositionModule implements BaseModule {
   protected _sdk: MmtSDK;
@@ -32,9 +33,12 @@ export class PositionModule implements BaseModule {
     lower_tick_sqrt_price: string | TransactionArgument,
     upper_tick_sqrt_price: string | TransactionArgument,
     transferToAddress?: string,
+    useMvr: boolean = true,
   ) {
+    const targetPackage = applyMvrPackage(txb, this.sdk, useMvr);
+
     const [lowerTick1] = txb.moveCall({
-      target: `${this.sdk.PackageId}::tick_math::get_tick_at_sqrt_price`,
+      target: `${targetPackage}::tick_math::get_tick_at_sqrt_price`,
       arguments: [
         typeof lower_tick_sqrt_price === 'string'
           ? txb.pure.u128(BigInt(lower_tick_sqrt_price))
@@ -42,7 +46,7 @@ export class PositionModule implements BaseModule {
       ],
     });
     const [upperTick1] = txb.moveCall({
-      target: `${this.sdk.PackageId}::tick_math::get_tick_at_sqrt_price`,
+      target: `${targetPackage}::tick_math::get_tick_at_sqrt_price`,
       arguments: [
         typeof upper_tick_sqrt_price === 'string'
           ? txb.pure.u128(BigInt(upper_tick_sqrt_price))
@@ -50,32 +54,32 @@ export class PositionModule implements BaseModule {
       ],
     });
     const [tick_spacing] = txb.moveCall({
-      target: `${this.sdk.PackageId}::i32::from_u32`,
+      target: `${targetPackage}::i32::from_u32`,
       arguments: [txb.pure.u32(pool.tickSpacing)],
     });
 
     const [lowerTickmod] = txb.moveCall({
-      target: `${this.sdk.PackageId}::i32::mod`,
+      target: `${targetPackage}::i32::mod`,
       arguments: [lowerTick1, tick_spacing],
     });
 
     const [upperTickmod] = txb.moveCall({
-      target: `${this.sdk.PackageId}::i32::mod`,
+      target: `${targetPackage}::i32::mod`,
       arguments: [upperTick1, tick_spacing],
     });
 
     const [upperTick] = txb.moveCall({
-      target: `${this.sdk.PackageId}::i32::sub`,
+      target: `${targetPackage}::i32::sub`,
       arguments: [upperTick1, upperTickmod],
     });
 
     const [lowerTick] = txb.moveCall({
-      target: `${this.sdk.PackageId}::i32::sub`,
+      target: `${targetPackage}::i32::sub`,
       arguments: [lowerTick1, lowerTickmod],
     });
 
     const [positionObj] = txb.moveCall({
-      target: `${this.sdk.PackageId}::liquidity::open_position`,
+      target: `${targetPackage}::liquidity::open_position`,
       arguments: [
         txb.object(pool.objectId),
         txnArgument(lowerTick, txb),
@@ -91,9 +95,15 @@ export class PositionModule implements BaseModule {
     }
   }
 
-  public closePosition(txb: Transaction, positionId: string | TransactionArgument) {
+  public closePosition(
+    txb: Transaction,
+    positionId: string | TransactionArgument,
+    useMvr: boolean = true,
+  ) {
+    const targetPackage = applyMvrPackage(txb, this.sdk, useMvr);
+
     txb.moveCall({
-      target: `${this.sdk.PackageId}::liquidity::close_position`,
+      target: `${targetPackage}::liquidity::close_position`,
       arguments: [txnArgument(positionId, txb), txb.object(this.sdk.contractConst.versionId)],
     });
   }
@@ -102,9 +112,12 @@ export class PositionModule implements BaseModule {
     txb: Transaction,
     positionId: string | TransactionArgument,
     reward_growth_inside: number[],
+    useMvr: boolean = true,
   ) {
+    const targetPackage = applyMvrPackage(txb, this.sdk, useMvr);
+
     txb.moveCall({
-      target: `${this.sdk.PackageId}::position::update_reward_infos`,
+      target: `${targetPackage}::position::update_reward_infos`,
       arguments: [
         txnArgument(positionId, txb),
         txb.makeMoveVec({
@@ -121,9 +134,12 @@ export class PositionModule implements BaseModule {
     txb: Transaction,
     positionId: string | TransactionArgument,
     reward_index: number,
+    useMvr: boolean = true,
   ) {
+    const targetPackage = applyMvrPackage(txb, this.sdk, useMvr);
+
     const [rewardinfoObj] = txb.moveCall({
-      target: `${this.sdk.PackageId}::position::try_borrow_mut_reward_info`,
+      target: `${targetPackage}::position::try_borrow_mut_reward_info`,
       arguments: [txnArgument(positionId, txb), txb.pure.u64(reward_index)],
     });
 
@@ -325,6 +341,8 @@ export class PositionModule implements BaseModule {
     for (let i = 0; i < positions.length; i += batchSize) {
       const batch = positions.slice(i, i + batchSize);
       const txb = new Transaction();
+      txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
+
       for (const position of batch) {
         const positionData = position.fields;
         const pos_id = positionData.id.id;
@@ -396,8 +414,11 @@ export class PositionModule implements BaseModule {
 
   public async getCoinOwedReward(positionId: string | TransactionArgument, reward_index: number) {
     const txb = new Transaction();
+    txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
+    const targetPackage = this.sdk.contractConst.mvrName || this.sdk.PackageId;
+
     txb.moveCall({
-      target: `${this.sdk.PackageId}::position::coins_owed_reward`,
+      target: `${targetPackage}::position::coins_owed_reward`,
       arguments: [txnArgument(positionId, txb), txb.pure.u64(reward_index)],
     });
     const devInspectResult = await this.sdk.rpcClient.devInspectTransactionBlock({
@@ -417,8 +438,11 @@ export class PositionModule implements BaseModule {
 
   public async getOwedCoinX(positionId: string | TransactionArgument) {
     const txb = new Transaction();
+    txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
+    const targetPackage = this.sdk.contractConst.mvrName || this.sdk.PackageId;
+
     txb.moveCall({
-      target: `${this.sdk.PackageId}::position::owed_coin_x`,
+      target: `${targetPackage}::position::owed_coin_x`,
       arguments: [txnArgument(positionId, txb)],
     });
     const devInspectResult = await this.sdk.rpcClient.devInspectTransactionBlock({
@@ -438,8 +462,11 @@ export class PositionModule implements BaseModule {
 
   public async getOwedCoinY(positionId: string | TransactionArgument) {
     const txb = new Transaction();
+    txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
+    const targetPackage = this.sdk.contractConst.mvrName || this.sdk.PackageId;
+
     txb.moveCall({
-      target: `${this.sdk.PackageId}::position::owed_coin_y`,
+      target: `${targetPackage}::position::owed_coin_y`,
       arguments: [txnArgument(positionId, txb)],
     });
     const devInspectResult = await this.sdk.rpcClient.devInspectTransactionBlock({
@@ -459,8 +486,11 @@ export class PositionModule implements BaseModule {
 
   public async getFeeGrowthInsideXLast(positionId: string | TransactionArgument) {
     const txb = new Transaction();
+    txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
+    const targetPackage = this.sdk.contractConst.mvrName || this.sdk.PackageId;
+
     txb.moveCall({
-      target: `${this.sdk.PackageId}::position::fee_growth_inside_x_last`,
+      target: `${targetPackage}::position::fee_growth_inside_x_last`,
       arguments: [txnArgument(positionId, txb)],
     });
     const devInspectResult = await this.sdk.rpcClient.devInspectTransactionBlock({
@@ -480,8 +510,11 @@ export class PositionModule implements BaseModule {
 
   public async getFeeGrowthInsideYLast(positionId: string | TransactionArgument) {
     const txb = new Transaction();
+    txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
+    const targetPackage = this.sdk.contractConst.mvrName || this.sdk.PackageId;
+
     txb.moveCall({
-      target: `${this.sdk.PackageId}::position::fee_growth_inside_y_last`,
+      target: `${targetPackage}::position::fee_growth_inside_y_last`,
       arguments: [txnArgument(positionId, txb)],
     });
     const devInspectResult = await this.sdk.rpcClient.devInspectTransactionBlock({
@@ -501,8 +534,11 @@ export class PositionModule implements BaseModule {
 
   public async getFeeRate(positionId: string | TransactionArgument) {
     const txb = new Transaction();
+    txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
+    const targetPackage = this.sdk.contractConst.mvrName || this.sdk.PackageId;
+
     txb.moveCall({
-      target: `${this.sdk.PackageId}::position::fee_rate`,
+      target: `${targetPackage}::position::fee_rate`,
       arguments: [txnArgument(positionId, txb)],
     });
     const devInspectResult = await this.sdk.rpcClient.devInspectTransactionBlock({
@@ -522,8 +558,11 @@ export class PositionModule implements BaseModule {
 
   public async getLiquidity(positionId: string | TransactionArgument) {
     const txb = new Transaction();
+    txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
+    const targetPackage = this.sdk.contractConst.mvrName || this.sdk.PackageId;
+
     txb.moveCall({
-      target: `${this.sdk.PackageId}::position::liquidity`,
+      target: `${targetPackage}::position::liquidity`,
       arguments: [txnArgument(positionId, txb)],
     });
     const devInspectResult = await this.sdk.rpcClient.devInspectTransactionBlock({
@@ -546,8 +585,11 @@ export class PositionModule implements BaseModule {
     reward_index: number,
   ) {
     const txb = new Transaction();
+    txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
+    const targetPackage = this.sdk.contractConst.mvrName || this.sdk.PackageId;
+
     txb.moveCall({
-      target: `${this.sdk.PackageId}::position::reward_growth_inside_last`,
+      target: `${targetPackage}::position::reward_growth_inside_last`,
       arguments: [txnArgument(positionId, txb), txb.pure.u64(reward_index)],
     });
     const devInspectResult = await this.sdk.rpcClient.devInspectTransactionBlock({
@@ -567,8 +609,11 @@ export class PositionModule implements BaseModule {
 
   public async getTickLowerIndex(positionId: string | TransactionArgument) {
     const txb = new Transaction();
+    txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
+    const targetPackage = this.sdk.contractConst.mvrName || this.sdk.PackageId;
+
     txb.moveCall({
-      target: `${this.sdk.PackageId}::position::tick_lower_index`,
+      target: `${targetPackage}::position::tick_lower_index`,
       arguments: [txnArgument(positionId, txb)],
     });
     const devInspectResult = await this.sdk.rpcClient.devInspectTransactionBlock({
@@ -588,8 +633,11 @@ export class PositionModule implements BaseModule {
 
   public async getTickUpperIndex(positionId: string | TransactionArgument) {
     const txb = new Transaction();
+    txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
+    const targetPackage = this.sdk.contractConst.mvrName || this.sdk.PackageId;
+
     txb.moveCall({
-      target: `${this.sdk.PackageId}::position::tick_upper_index`,
+      target: `${targetPackage}::position::tick_upper_index`,
       arguments: [txnArgument(positionId, txb)],
     });
     const devInspectResult = await this.sdk.rpcClient.devInspectTransactionBlock({
@@ -609,6 +657,9 @@ export class PositionModule implements BaseModule {
 
   public async fetchAllRewards(positionId: string, address: string, pool: ExtendedPool) {
     const txb = new Transaction();
+    txb.addSerializationPlugin(this.sdk.mvrNamedPackagesPlugin);
+    const targetPackage = this.sdk.contractConst.mvrName || this.sdk.PackageId;
+
     const poolModel: PoolParams = {
       objectId: pool.poolId,
       tokenXType: pool.tokenXType,
@@ -641,13 +692,13 @@ export class PositionModule implements BaseModule {
     for (const event of res.events) {
       const { type, parsedJson } = event;
 
-      if (type === `${this.sdk.PackageId}::collect::CollectPoolRewardEvent`) {
+      if (type === `${targetPackage}::collect::CollectPoolRewardEvent`) {
         const { reward_coin_type, amount } = parsedJson as any;
         rewardsData.rewards.push({
           coinType: `0x${reward_coin_type.name}`,
           amount: parseInt(amount),
         });
-      } else if (type === `${this.sdk.PackageId}::collect::FeeCollectedEvent`) {
+      } else if (type === `${targetPackage}::collect::FeeCollectedEvent`) {
         const { amount_x, amount_y } = parsedJson as any;
         rewardsData.feeCollected = {
           amountX: parseInt(amount_x),

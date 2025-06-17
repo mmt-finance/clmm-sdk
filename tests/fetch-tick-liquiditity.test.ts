@@ -1,7 +1,7 @@
 import { MmtSDK, PoolModule } from '../src';
 import { describe, it, beforeEach, expect } from '@jest/globals';
 
-describe('PoolModule.fetchAllTickLiquidities & fetchTickLiquiditity', () => {
+describe('PoolModule.fetchAllTickLiquidity & fetchTickLiquidity', () => {
   let sdk: MmtSDK;
   let poolModule: PoolModule;
 
@@ -23,10 +23,10 @@ describe('PoolModule.fetchAllTickLiquidities & fetchTickLiquiditity', () => {
     }
   }, 100000);
 
-  it('fetchTickLiquiditity positive', async () => {
+  it('fetchTickLiquidity positive', async () => {
     const poolId = '0x455cf8d2ac91e7cb883f515874af750ed3cd18195c970b7a2d46235ac2b0c388';
-    const resp = await poolModule.fetchTickLiquiditity(poolId, 1, 1);
-    const reverseResp = await poolModule.fetchTickLiquiditity(poolId, 1, 1, true);
+    const resp = await poolModule.fetchTickLiquidity(poolId, 1, 1);
+    const reverseResp = await poolModule.fetchTickLiquidity(poolId, 1, 1, true);
     const tickData = resp.data?.tickData || [];
     const reverseTickData = reverseResp.data?.tickData || [];
     if (resp && tickData.length > 0) {
