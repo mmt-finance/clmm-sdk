@@ -10,7 +10,7 @@ export const MainnetConfig = {
     mvrName: '@mmt/clmm-core',
   },
   mmtApiUrl: 'https://api.mmt.finance',
-  suiClientUrl: 'https://fullnode.mainnet.sui.io:443',
+  suiClientUrl: 'https://fullnode.mainnet.sui.io',
   mvrEndpoint: 'https://mainnet.mvr.mystenlabs.com',
 };
 
