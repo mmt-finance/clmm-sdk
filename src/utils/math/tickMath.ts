@@ -1,6 +1,6 @@
 /* eslint-disable no-bitwise */
 import BN from 'bn.js';
-import { asIntN, d } from './commonMath';
+import { asIntN, d, mod } from './commonMath';
 import { MAX_SQRT_PRICE, MIN_SQRT_PRICE } from '../constants';
 import Decimal from 'decimal.js';
 import { MathUtil } from './commonMath';
@@ -366,8 +366,20 @@ export class TickMath {
     );
   }
 
+  static priceToInitializableTickIndexWithTickSpacing(
+    price: Decimal,
+    decimalsA: number,
+    decimalsB: number,
+    tickSpacing: number,
+  ): number {
+    return TickMath.getInitializableTickIndex(
+      TickMath.priceToTickIndexWithTickSpacing(price, decimalsA, decimalsB, tickSpacing),
+      tickSpacing,
+    );
+  }
+
   static getInitializableTickIndex(tickIndex: number, tickSpacing: number): number {
-    return tickIndex - (tickIndex % tickSpacing);
+    return tickIndex - mod(tickIndex, tickSpacing);
   }
 
   /**

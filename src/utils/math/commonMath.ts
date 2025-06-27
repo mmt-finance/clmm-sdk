@@ -256,3 +256,7 @@ export function d(value?: Decimal.Value): Decimal.Instance {
 export function decimalsMultiplier(decimals?: Decimal.Value): Decimal.Instance {
   return d(10).pow(d(decimals).abs());
 }
+
+export function mod(n: number, m: number): number {
+  return ((n % m) + m) % m;
+}

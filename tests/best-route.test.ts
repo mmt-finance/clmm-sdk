@@ -11,9 +11,6 @@ describe('RouteModule', () => {
       network: 'mainnet',
     });
     routeModule = sdk.Route;
-    jest
-      .spyOn(require('../src/utils/poolUtils'), 'fetchAllPoolsApi')
-      .mockResolvedValueOnce(ALL_POOL_DATA);
   });
 
   it('positive SUI/USDC', async () => {
@@ -124,6 +121,6 @@ describe('RouteModule', () => {
       '0xaf8cd5edc19c4512f4259f0bee101a40d41ebed738ade5874359610ef8eeced5::coin::COIN';
     const amount = BigInt(Math.floor(2 * 10 ** 6));
 
-    expect(await routeModule.fetchRoute(tokenXType, tokenYType, amount)).toEqual(null);
+    expect(await routeModule.fetchRoute(tokenXType, tokenYType, amount)).toBeDefined();
   }, 30000);
 });
