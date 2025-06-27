@@ -18,13 +18,13 @@ describe('PoolModule.collectAllPoolsRewards', () => {
     });
     poolModule = sdk.Pool;
 
-    jest
-      .spyOn(require('../src/utils/poolUtils'), 'fetchAllPoolsApi')
-      .mockResolvedValue(ALL_POOL_DATA);
-
-    jest
-      .spyOn(require('../src/utils/poolUtils'), 'fetchAllTokenApi')
-      .mockResolvedValue(ALL_TOKEN_DATA);
+    // jest
+    //   .spyOn(require('../src/utils/poolUtils'), 'fetchAllPoolsApi')
+    //   .mockResolvedValue(ALL_POOL_DATA);
+    //
+    // jest
+    //   .spyOn(require('../src/utils/poolUtils'), 'fetchAllTokenApi')
+    //   .mockResolvedValue(ALL_TOKEN_DATA);
   });
 
   it('test stable apr', async () => {
