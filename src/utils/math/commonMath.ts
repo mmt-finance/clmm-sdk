@@ -61,12 +61,6 @@ export class MathUtil {
     return n0.div(n1);
   }
 
-  static u32ToI32(u32) {
-    const buf = Buffer.alloc(4);
-    buf.writeUInt32LE(u32, 0);
-    return buf.readInt32LE(0);
-  }
-
   static subUnderflowU128(n0: BN, n1: BN): BN {
     if (n0.lt(n1)) {
       return n0.sub(n1).add(U128_MAX);

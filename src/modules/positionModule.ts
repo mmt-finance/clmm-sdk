@@ -184,11 +184,9 @@ export class PositionModule implements BaseModule {
         const liquidity = new BN(positionData.liquidity ?? 0);
         const upperBits = Number(positionData.tick_upper_index.fields.bits ?? 0);
         const lowerBits = Number(positionData.tick_lower_index.fields.bits ?? 0);
-        const upperTick = MathUtil.u32ToI32(upperBits);
-        const lowerTick = MathUtil.u32ToI32(lowerBits);
 
-        const upperTickSqrtPrice = TickMath.tickIndexToSqrtPriceX64(convertI32ToSigned(upperTick));
-        const lowerTickSqrtPrice = TickMath.tickIndexToSqrtPriceX64(convertI32ToSigned(lowerTick));
+        const upperTickSqrtPrice = TickMath.tickIndexToSqrtPriceX64(convertI32ToSigned(upperBits));
+        const lowerTickSqrtPrice = TickMath.tickIndexToSqrtPriceX64(convertI32ToSigned(lowerBits));
 
         const { coinA, coinB } = getCoinAmountFromLiquidity(
           liquidity,
@@ -241,15 +239,11 @@ export class PositionModule implements BaseModule {
           const liquidity = new BN(positionData.liquidity ?? 0);
           const upperBits = Number(positionData.tick_upper_index.fields.bits ?? 0);
           const lowerBits = Number(positionData.tick_lower_index.fields.bits ?? 0);
-          const upperTick = MathUtil.u32ToI32(upperBits);
-          const lowerTick = MathUtil.u32ToI32(lowerBits);
+          const upperTick = convertI32ToSigned(upperBits);
+          const lowerTick = convertI32ToSigned(lowerBits);
 
-          const upperTickSqrtPrice = TickMath.tickIndexToSqrtPriceX64(
-            convertI32ToSigned(upperTick),
-          );
-          const lowerTickSqrtPrice = TickMath.tickIndexToSqrtPriceX64(
-            convertI32ToSigned(lowerTick),
-          );
+          const upperTickSqrtPrice = TickMath.tickIndexToSqrtPriceX64(upperTick);
+          const lowerTickSqrtPrice = TickMath.tickIndexToSqrtPriceX64(lowerTick);
           const lowerPrice = Number(
             TickMath.sqrtPriceX64ToPrice(
               lowerTickSqrtPrice,
