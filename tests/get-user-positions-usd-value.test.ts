@@ -32,7 +32,7 @@ describe('PositionModule.getUserPositionsUsdValue', () => {
     expect(
       positionUsdValue.every(
         (value, index) =>
-          Math.abs(value - positionUsdValueReturnByAllPositions[index]) < Math.pow(10, -2),
+          Math.abs(value - positionUsdValueReturnByAllPositions[index]) < Math.pow(10, -3),
       ),
     ).toBe(true);
   }, 30000);
