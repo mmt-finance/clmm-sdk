@@ -1,6 +1,11 @@
 import { TransactionArgument, Transaction } from '@mysten/sui/transactions';
 import { CoinStruct, SuiClient } from '@mysten/sui/client';
 import { ModuleConstants } from '../utils/constants';
+import { normalizeStructTag } from '@mysten/sui/utils';
+
+const isSUICoin = (coinType: string) => {
+  return normalizeStructTag(coinType) === normalizeStructTag(ModuleConstants.suiCoinType);
+};
 
 const getSuiCoin = (
   amount: bigint | TransactionArgument,
@@ -48,7 +53,7 @@ const getExactCoinByAmount = (
   amount: bigint,
   txb: Transaction,
 ) => {
-  if (coinType === ModuleConstants.suiCoinType) {
+  if (isSUICoin(coinType)) {
     const [coinA] = txb.splitCoins(txb.gas, [txb.pure.u64(amount)]);
     return coinA;
   } else {
@@ -119,7 +124,7 @@ const mergeAllUserCoins = async (coinType: string, signerAddress: string, suiCli
 
     const txb = new Transaction();
 
-    if (coinType === ModuleConstants.suiCoinType) {
+    if (isSUICoin(coinType)) {
       totalBalance = totalBalance - BigInt('1000');
       txb.splitCoins(txb.gas, [txb.pure.u64(totalBalance)]);
     }
@@ -193,4 +198,5 @@ export {
   mergeAllCoinsWithoutFetch,
   getAllUserCoins,
   getCoinsGreaterThanAmount,
+  isSUICoin,
 };
