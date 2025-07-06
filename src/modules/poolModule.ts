@@ -34,7 +34,6 @@ import Decimal from 'decimal.js';
 import { convertI32ToSigned, TickMath } from '../utils/math/tickMath';
 import { MathUtil } from '../utils/math/commonMath';
 import { bcs } from '@mysten/sui/bcs';
-import { getAllUserCoins, getExactCoinByAmount } from '../utils/coinUtils';
 import { applyMvrPackage } from '../utils/mvr/utils';
 
 export const Q_64 = '18446744073709551616';
@@ -562,7 +561,7 @@ export class PoolModule implements BaseModule {
     transferToAddress: string;
     limitSqrtPrice?: bigint;
     slippagePercentage: number; // 1 = 1%
-    useMvr: boolean;
+    useMvr?: boolean;
   }) {
     const targetPackage = applyMvrPackage(txb, this.sdk, useMvr);
     const LowLimitPrice = BigInt('4295048017');
