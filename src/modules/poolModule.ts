@@ -108,7 +108,6 @@ export class PoolModule implements BaseModule {
       limitSqrtPrice = isXtoY ? LowLimitPrice : HighLimitPrice;
     }
 
-    // returns[ 12]
     const [receive_a, receive_b, flash_receipt] = txb.moveCall({
       target: `${targetPackage}::trade::flash_swap`,
       typeArguments: [pool.tokenXType, pool.tokenYType],
@@ -123,28 +122,24 @@ export class PoolModule implements BaseModule {
       ],
     });
 
-    // returns[13]
     txb.moveCall({
       target: `0x2::balance::destroy_zero`,
       arguments: [isXtoY ? receive_a : receive_b],
       typeArguments: [isXtoY ? pool.tokenXType : pool.tokenYType],
     });
 
-    // returns[14]
     const [zeroCoin] = txb.moveCall({
       target: `0x2::coin::zero`,
       arguments: [],
       typeArguments: [isXtoY ? pool.tokenYType : pool.tokenXType],
     });
 
-    // returns[15]
     const [coinADebt, coinBDebt] = txb.moveCall({
       target: `${targetPackage}::trade::swap_receipt_debts`,
       typeArguments: [],
       arguments: [flash_receipt],
     });
 
-    // returns[16] ??
     const pay_coin_a = isXtoY
       ? txb.moveCall({
           target: `0x2::coin::split`,
@@ -375,54 +370,6 @@ export class PoolModule implements BaseModule {
     // if (!limitSqrtPrice) {
     //   limitSqrtPrice = isXtoY ? LowLimitPrice : HighLimitPrice;
     // }
-    // const [depositAmount] = txb.moveCall({
-    //   target: '0x2::coin::value',
-    //   arguments: [inputCoin],
-    //   typeArguments: [isXtoY ? pool.tokenXType : pool.tokenYType],
-    // });
-    // const [swapAmount, remainingA] = txb.moveCall({
-    //   target: `${this.sdk.PackageId}::trade::get_optimal_swap_amount_for_single_sided_liquidity`,
-    //   typeArguments: [pool.tokenXType, pool.tokenYType],
-    //   arguments: [
-    //     txb.object(pool.objectId),
-    //     depositAmount,
-    //     txnArgument(position, txb),
-    //     txb.pure.u128(limitSqrtPrice),
-    //     txb.pure.bool(isXtoY),
-    //     txb.pure.u64(20),
-    //   ],
-    // });
-    // const [swapCoin] = txb.splitCoins(inputCoin, [swapAmount]);
-    // const outputCoin = this.swap(txb, pool, swapAmount, swapCoin, isXtoY, null, limitSqrtPrice);
-    // const [coinAOut, coinBOut] = txb.moveCall({
-    //   target: `${this.sdk.PackageId}::liquidity::add_liquidity`,
-    //   typeArguments: [pool.tokenXType, pool.tokenYType],
-    //   arguments: [
-    //     txb.object(pool.objectId),
-    //     // txb.object("0x06b1701f4a188877281b43b26cc3f96e9d0f9a0cd3aac8d06c914f1ebaa5846a"),
-    //     txnArgument(position, txb),
-    //     isXtoY ? inputCoin : outputCoin,
-    //     isXtoY ? outputCoin : inputCoin,
-    //     txb.pure.u64(min_amount_x),
-    //     txb.pure.u64(min_amount_y),
-    //     txb.object(normalizeSuiObjectId('0x6')),
-    //     txb.object(this.sdk.contractConst.versionId),
-    //   ],
-    // });
-    // if (Boolean(transferToAddress)) {
-    //   txb.transferObjects(
-    //     [coinAOut, coinBOut] as TransactionObjectArgument[],
-    //     txb.pure.address(transferToAddress),
-    //   );
-    //   txb.transferObjects([swapCoin], txb.pure.address(transferToAddress));
-    // } else {
-    //   return { coinAOut, coinBOut, swapCoin };
-    // }
-    // const devInspectResult = await this.sdk.rpcClient.devInspectTransaction({
-    //     Transaction: txb,
-    //     sender: "0xeae88ca35ce291f0a1c807451e0d9712e7c61758a8f1fbf1dd23d9646b275847",
-    // });
-    // console.log(32242, devInspectResult);
   }
 
   public async simulateSwapResultBeforeAddLiquiditySingleSided({
@@ -591,36 +538,29 @@ export class PoolModule implements BaseModule {
       ],
     });
 
-    // returns[11]
     const [swapCoin] = txb.splitCoins(inputCoin, [swapAmount]);
 
     const outputCoin = this.swap(txb, pool, swapAmount, swapCoin, isXtoY, null, limitSqrtPrice);
 
-    // returns[22]
     const outputCoinAmount = txb.moveCall({
       target: '0x2::coin::value',
       arguments: [outputCoin],
       typeArguments: [swappedCoinType],
     });
 
-    // returns[23]
     const leftDepositAmount = txb.moveCall({
       target: '0x2::coin::value',
       arguments: [inputCoin],
       typeArguments: [depositCoinType],
     });
 
-    // returns[24]
     let min_amount_x = this._calcMinAmountUsingSlippage(txb, leftDepositAmount, slippagePercentage);
-
-    // returns[25]
     let min_amount_y = this._calcMinAmountUsingSlippage(txb, outputCoinAmount, slippagePercentage);
 
     if (!isXtoY) {
       [min_amount_x, min_amount_y] = [min_amount_y, min_amount_x];
     }
 
-    // returns[26]
     const [coinAOut, coinBOut] = txb.moveCall({
       target: `${targetPackage}::liquidity::add_liquidity`,
       typeArguments: [pool.tokenXType, pool.tokenYType],
@@ -639,79 +579,6 @@ export class PoolModule implements BaseModule {
 
     txb.transferObjects([coinAOut, coinBOut, swapCoin], txb.pure.address(transferToAddress));
 
-    // const devInspectResult = await this.sdk.rpcClient.devInspectTransactionBlock({
-    //   transactionBlock: txb,
-    //   sender: normalizeSuiAddress('0x0'),
-    //   additionalArgs: { showRawTxnDataAndEffects: true },
-    // });
-
-    // const depositAmount = this._formatReturnU64ValueToAmount(
-    //   devInspectResult.results[9]?.returnValues?.[0]?.[0],
-    //   9,
-    // );
-    // const swapAmount = this._formatReturnU64ValueToAmount(
-    //   devInspectResult.results[10]?.returnValues?.[0]?.[0],
-    //   9,
-    // );
-    // const outputCoinAmount = this._formatReturnU64ValueToAmount(
-    //   devInspectResult.results[22]?.returnValues?.[0]?.[0],
-    //   6,
-    // );
-    // const leftDepositAmount = this._formatReturnU64ValueToAmount(
-    //   devInspectResult.results[23]?.returnValues?.[0]?.[0],
-    //   9,
-    // );
-    // const min_amount_x_result = this._formatReturnU64ValueToAmount(
-    //   devInspectResult.results[24]?.returnValues?.[0]?.[0],
-    //   9,
-    // );
-    // const min_amount_y_result = this._formatReturnU64ValueToAmount(
-    //   devInspectResult.results[25]?.returnValues?.[0]?.[0],
-    //   6,
-    // );
-
-    // const isLeftDepositAmountRight =
-    //   new Decimal(depositAmount).minus(new Decimal(swapAmount)).toString() ===
-    //   new Decimal(leftDepositAmount).toString();
-
-    // console.log('-----test addLiquiditySingleSided 2-----', {
-    //   isLeftDepositAmountRight,
-    // });
-
-    // const targetMinAmountX = new Decimal(leftDepositAmount)
-    //   .mul(new Decimal(10000 - slippagePercentage * 100))
-    //   .div(new Decimal(10000));
-    // const targetMinAmountY = new Decimal(outputCoinAmount)
-    //   .mul(new Decimal(10000 - slippagePercentage * 100))
-    //   .div(new Decimal(10000));
-
-    // const isSlippageCalculatedMinXRight = targetMinAmountX
-    //   .minus(new Decimal(min_amount_x_result))
-    //   .abs()
-    //   .lt(new Decimal(0.000001));
-
-    // const isSlippageCalculatedMinYRight = targetMinAmountY
-    //   .minus(new Decimal(min_amount_y_result))
-    //   .abs()
-    //   .lt(new Decimal(0.000001));
-
-    // console.log('-----test addLiquiditySingleSided 3-----', {
-    //   targetMinAmountX: targetMinAmountX.toString(),
-    //   targetMinAmountY: targetMinAmountY.toString(),
-    //   min_amount_x_result: new Decimal(min_amount_x_result).toString(),
-    //   min_amount_y_result: new Decimal(min_amount_y_result).toString(),
-    //   isSlippageCalculatedMinXRight,
-    //   isSlippageCalculatedMinYRight,
-    // });
-
-    // console.log('-----test addLiquiditySingleSided 2-----', {
-    //   depositAmount,
-    //   swapAmount,
-    //   leftDepositAmount,
-    //   outputCoinAmount,
-    //   min_amount_x_result,
-    //   min_amount_y_result,
-    // });
     return { coinAOut, coinBOut, swapCoin };
   }
 
