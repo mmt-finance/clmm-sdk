@@ -365,11 +365,6 @@ export class PoolModule implements BaseModule {
       slippagePercentage: 100, // min_amount_x and min_amount_y are BigInt(0) before, equals to 100% slippage
       useMvr,
     });
-    // const LowLimitPrice = BigInt('4295048017');
-    // const HighLimitPrice = BigInt('79226673515401279992447579050');
-    // if (!limitSqrtPrice) {
-    //   limitSqrtPrice = isXtoY ? LowLimitPrice : HighLimitPrice;
-    // }
   }
 
   public async simulateSwapResultBeforeAddLiquiditySingleSided({
