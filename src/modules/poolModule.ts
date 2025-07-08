@@ -1178,12 +1178,13 @@ export class PoolModule implements BaseModule {
         throw new Error('Token not found');
       }
 
-      const aprData = this.estPositionAPRWithDeltaMethod(
+      const aprData = this.estPositionAPRWithLiquidityHM(
         convertI32ToSigned(Number(pool.currentTickIndex)),
         pool_lower_tick_index,
         pool_upper_tick_index,
         new BN(pool.currentSqrtPrice),
         new BN(pool.liquidity),
+        new BN(pool.liquidityHM),
         tokenA?.decimals,
         tokenB?.decimals,
         Number(pool?.lpFeesPercent),
