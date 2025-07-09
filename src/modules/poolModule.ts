@@ -186,7 +186,7 @@ export class PoolModule implements BaseModule {
       arguments: [poolObject, txb.pure.u128(limitSqrtPrice), txb.pure.bool(isXtoY)],
     });
 
-    const [outputCoin] = txb.moveCall({
+    const outputCoin = txb.moveCall({
       target: `0x2::coin::from_balance`,
       typeArguments: [isXtoY ? pool.tokenYType : pool.tokenXType],
       arguments: [isXtoY ? receive_b : receive_a],
@@ -354,22 +354,173 @@ export class PoolModule implements BaseModule {
     limitSqrtPrice?: bigint,
     useMvr: boolean = true,
   ) {
-    const targetPackage = applyMvrPackage(txb, this.sdk, useMvr);
+    return this.addLiquiditySingleSidedV2({
+      txb,
+      pool,
+      position,
+      inputCoin,
+      isXtoY,
+      transferToAddress,
+      limitSqrtPrice,
+      slippagePercentage: 100, // min_amount_x and min_amount_y are BigInt(0) before, equals to 100% slippage
+      useMvr,
+    });
+  }
 
+  public async simulateSwapResultBeforeAddLiquiditySingleSided({
+    pool,
+    inputAmountInBaseUnits,
+    isXtoY,
+    limitSqrtPrice,
+    position,
+    txb,
+    useMvr,
+  }: {
+    txb: Transaction;
+    pool: PoolParams & { tokenXDecimals: number; tokenYDecimals: number };
+    inputAmountInBaseUnits: bigint; // amount * 10^decimals
+    isXtoY: boolean;
+    limitSqrtPrice: bigint;
+    position: string | TransactionArgument;
+    useMvr: boolean;
+  }) {
+    const targetPackage = applyMvrPackage(txb, this.sdk, useMvr);
+    const inputCoinDecimals = isXtoY ? pool.tokenXDecimals : pool.tokenYDecimals;
+    const outputCoinDecimals = isXtoY ? pool.tokenYDecimals : pool.tokenXDecimals;
+
+    txb.moveCall({
+      target: `${targetPackage}::trade::get_optimal_swap_amount_for_single_sided_liquidity`,
+      typeArguments: [pool.tokenXType, pool.tokenYType],
+      arguments: [
+        txb.object(pool.objectId),
+        txb.pure.u64(inputAmountInBaseUnits),
+        txnArgument(position, txb),
+        txb.pure.u128(limitSqrtPrice),
+        txb.pure.bool(isXtoY),
+        txb.pure.u64(20),
+      ],
+    });
+
+    try {
+      const devInspectResult = await this.sdk.rpcClient.devInspectTransactionBlock({
+        transactionBlock: txb,
+        sender: '0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef',
+      });
+      const swapAmountInBaseUnits = this._decodeReturnU64Value(
+        devInspectResult.results[devInspectResult.results.length - 1]?.returnValues?.[0]?.[0],
+      );
+      const outputAmountInBaseUnits = await this.preSwap(
+        new Transaction(),
+        [
+          {
+            tokenXType: pool.tokenXType,
+            tokenYType: pool.tokenYType,
+            poolId: pool.objectId,
+            isXtoY,
+          },
+        ],
+        swapAmountInBaseUnits,
+      );
+
+      const leftDepositAmount = this._formatAmountWithDecimals(
+        (inputAmountInBaseUnits - BigInt(swapAmountInBaseUnits)).toString(),
+        inputCoinDecimals,
+      );
+
+      const outputAmount = this._formatAmountWithDecimals(
+        outputAmountInBaseUnits.toString(),
+        outputCoinDecimals,
+      );
+
+      const swappedPercent = Decimal.div(
+        Decimal(swapAmountInBaseUnits),
+        Decimal(inputAmountInBaseUnits.toString()),
+      )
+        .mul(100)
+        .toNumber()
+        .toFixed(2);
+
+      const leftPercent = (100 - Number(swappedPercent)).toFixed(2);
+
+      return {
+        tokenXAmount: isXtoY ? leftDepositAmount : outputAmount,
+        tokenYAmount: isXtoY ? outputAmount : leftDepositAmount,
+        tokenXPercent: isXtoY ? leftPercent : swappedPercent,
+        tokenYPercent: isXtoY ? swappedPercent : leftPercent,
+      };
+    } catch (e) {
+      console.log('sdk::simulateSwapResultBeforeAddLiquiditySingleSided error::', e);
+      return null;
+    }
+  }
+
+  /**
+   * @param txb - Transaction builder
+   * @param amount - Amount of coin to calculate slippage for
+   * @param slippagePercentage - Slippage percentage (1 = 1%, 0.01 = 0.01%)
+   * @description min_amount = amount * (1 - slippagePercentage / 100)
+   */
+  private _calcMinAmountUsingSlippage(
+    txb: Transaction,
+    amount: TransactionArgument,
+    slippagePercentage: number, // 1 = 1%, 0.01 = 0.01%
+  ) {
+    // scale to 10000 base to avoid precision loss?
+    const realSlippage = txb.pure.u64(10000 - slippagePercentage * 100);
+    return txb.moveCall({
+      target: `${this.sdk.PackageId}::full_math_u64::mul_div_ceil`,
+      arguments: [amount, realSlippage, txb.pure.u64(10000)],
+    });
+  }
+
+  /**
+   * @description Add liquidity with single sided token
+   * @param txb - Transaction builder
+   * @param pool - Pool parameters
+   * @param position - Position ID
+   * @param inputCoin - Input coin, the single sided token
+   * @param isXtoY - Whether the input coin is X or Y
+   * @param transferToAddress - Address to transfer the output coin to
+   * @param limitSqrtPrice - Limit sqrt price, it's calculated by swap slippage
+   * @param slippagePercentage - Slippage percentage (1 = 1%, 0.01 = 0.01%)
+   */
+  public async addLiquiditySingleSidedV2({
+    txb,
+    pool,
+    position,
+    inputCoin,
+    isXtoY,
+    transferToAddress,
+    limitSqrtPrice,
+    slippagePercentage,
+    useMvr = true,
+  }: {
+    txb: Transaction;
+    pool: PoolParams;
+    position: string | TransactionArgument;
+    inputCoin: TransactionObjectArgument;
+    isXtoY: boolean;
+    transferToAddress: string;
+    limitSqrtPrice?: bigint;
+    slippagePercentage: number; // 1 = 1%
+    useMvr?: boolean;
+  }) {
+    const targetPackage = applyMvrPackage(txb, this.sdk, useMvr);
     const LowLimitPrice = BigInt('4295048017');
     const HighLimitPrice = BigInt('79226673515401279992447579050');
-
+    const depositCoinType = isXtoY ? pool.tokenXType : pool.tokenYType;
+    const swappedCoinType = isXtoY ? pool.tokenYType : pool.tokenXType;
     if (!limitSqrtPrice) {
       limitSqrtPrice = isXtoY ? LowLimitPrice : HighLimitPrice;
     }
 
-    const [depositAmount] = txb.moveCall({
+    const depositAmount = txb.moveCall({
       target: '0x2::coin::value',
       arguments: [inputCoin],
-      typeArguments: [isXtoY ? pool.tokenXType : pool.tokenYType],
+      typeArguments: [depositCoinType],
     });
 
-    const [swapAmount, remainingA] = txb.moveCall({
+    const [swapAmount] = txb.moveCall({
       target: `${targetPackage}::trade::get_optimal_swap_amount_for_single_sided_liquidity`,
       typeArguments: [pool.tokenXType, pool.tokenYType],
       arguments: [
@@ -386,6 +537,25 @@ export class PoolModule implements BaseModule {
 
     const outputCoin = this.swap(txb, pool, swapAmount, swapCoin, isXtoY, null, limitSqrtPrice);
 
+    const outputCoinAmount = txb.moveCall({
+      target: '0x2::coin::value',
+      arguments: [outputCoin],
+      typeArguments: [swappedCoinType],
+    });
+
+    const leftDepositAmount = txb.moveCall({
+      target: '0x2::coin::value',
+      arguments: [inputCoin],
+      typeArguments: [depositCoinType],
+    });
+
+    let min_amount_x = this._calcMinAmountUsingSlippage(txb, leftDepositAmount, slippagePercentage);
+    let min_amount_y = this._calcMinAmountUsingSlippage(txb, outputCoinAmount, slippagePercentage);
+
+    if (!isXtoY) {
+      [min_amount_x, min_amount_y] = [min_amount_y, min_amount_x];
+    }
+
     const [coinAOut, coinBOut] = txb.moveCall({
       target: `${targetPackage}::liquidity::add_liquidity`,
       typeArguments: [pool.tokenXType, pool.tokenYType],
@@ -395,28 +565,29 @@ export class PoolModule implements BaseModule {
         txnArgument(position, txb),
         isXtoY ? inputCoin : outputCoin,
         isXtoY ? outputCoin : inputCoin,
-        txb.pure.u64(min_amount_x),
-        txb.pure.u64(min_amount_y),
+        min_amount_x,
+        min_amount_y,
         txb.object(normalizeSuiObjectId('0x6')),
         txb.object(this.sdk.contractConst.versionId),
       ],
     });
 
     if (Boolean(transferToAddress)) {
-      txb.transferObjects(
-        [coinAOut, coinBOut] as TransactionObjectArgument[],
-        txb.pure.address(transferToAddress),
-      );
-      txb.transferObjects([swapCoin], txb.pure.address(transferToAddress));
-    } else {
-      return { coinAOut, coinBOut, swapCoin };
+      txb.transferObjects([coinAOut, coinBOut, swapCoin], txb.pure.address(transferToAddress));
     }
+  }
 
-    // const devInspectResult = await this.sdk.rpcClient.devInspectTransaction({
-    //     Transaction: txb,
-    //     sender: "0xeae88ca35ce291f0a1c807451e0d9712e7c61758a8f1fbf1dd23d9646b275847",
-    // });
-    // console.log(32242, devInspectResult);
+  private _formatReturnU64ValueToAmount(bytes: number[], decimals: number) {
+    const rawAmountStr = this._decodeReturnU64Value(bytes).toString();
+    return this._formatAmountWithDecimals(rawAmountStr, decimals);
+  }
+
+  private _formatAmountWithDecimals(amount: string, decimals: number) {
+    return new Decimal(amount).div(new Decimal(10).pow(decimals)).toString();
+  }
+
+  private _decodeReturnU64Value(bytes: number[]) {
+    return bcs.u64().parse(new Uint8Array(bytes));
   }
 
   public collectFee(
