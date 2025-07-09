@@ -572,9 +572,9 @@ export class PoolModule implements BaseModule {
       ],
     });
 
-    txb.transferObjects([coinAOut, coinBOut, swapCoin], txb.pure.address(transferToAddress));
-
-    return { coinAOut, coinBOut, swapCoin };
+    if (Boolean(transferToAddress)) {
+      txb.transferObjects([coinAOut, coinBOut, swapCoin], txb.pure.address(transferToAddress));
+    }
   }
 
   private _formatReturnU64ValueToAmount(bytes: number[], decimals: number) {
