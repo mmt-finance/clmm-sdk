@@ -27,6 +27,7 @@ import {
   fetchTickLiquidityApi,
   fetchTokenApi,
   fetchUserObjectsByPkg,
+  getLimitSqrtPriceUsingSlippage,
   handleMmtCetusSwap,
 } from '../utils/poolUtils';
 import BN from 'bn.js';
@@ -1474,5 +1475,222 @@ export class PoolModule implements BaseModule {
       feeAPR,
       rewarderApr,
     };
+  }
+
+  private async _findRouteAndSwap({
+    txb,
+    inputCoinType,
+    inputCoin,
+    outputCoinType,
+    slippage = 1,
+    usedPoolId,
+    useMvr = true,
+  }: {
+    txb: Transaction;
+    inputCoinType: string;
+    inputCoin: TransactionObjectArgument;
+    outputCoinType: string;
+    slippage: number; // 1 = 1%
+    usedPoolId?: string;
+    useMvr?: boolean;
+  }) {
+    if (inputCoinType === outputCoinType) {
+      return inputCoin;
+    }
+
+    const route = await this.sdk.Route.fetchRoute(inputCoinType, outputCoinType, 1_000_000_000n); // use 1B as amount for estimation
+
+    if (!route || !route.path || route.path.length === 0) {
+      throw new Error(`No swap route found from ${inputCoinType} to ${outputCoinType}`);
+    }
+
+    if (usedPoolId && route.path.includes(usedPoolId)) {
+      console.log(
+        `\n\n\nOops, ${inputCoinType} to ${outputCoinType} will use same pool to swap\n\n\n`,
+        usedPoolId,
+        route.path,
+      );
+    }
+
+    const allPools = await this.getAllPools();
+
+    let currentCoin = inputCoin;
+    let currentAmount = txb.moveCall({
+      target: '0x2::coin::value',
+      arguments: [currentCoin],
+      typeArguments: [inputCoinType],
+    });
+    let currentCoinType = inputCoinType;
+
+    for (let i = 0; i < route.path.length; i++) {
+      const poolId = route.path[i];
+      const swapPool = allPools.find((p) => p.poolId === poolId);
+
+      if (!swapPool) {
+        throw new Error(`Pool ${poolId} not found`);
+      }
+
+      const isXtoY = swapPool.tokenXType === currentCoinType;
+
+      const poolParams: PoolParams = {
+        objectId: poolId,
+        tokenXType: swapPool.tokenXType,
+        tokenYType: swapPool.tokenYType,
+      };
+
+      const limitSqrtPrice = await getLimitSqrtPriceUsingSlippage({
+        client: this.sdk.rpcClient,
+        poolId: swapPool.poolId,
+        currentSqrtPrice: swapPool.currentSqrtPrice,
+        tokenX: swapPool.tokenX,
+        tokenY: swapPool.tokenY,
+        slippagePercentage: slippage,
+        isTokenX: isXtoY,
+      });
+
+      currentCoin = this.swap(
+        txb,
+        poolParams,
+        currentAmount,
+        currentCoin,
+        isXtoY,
+        undefined,
+        limitSqrtPrice,
+        useMvr,
+      );
+
+      currentCoinType = isXtoY ? swapPool.tokenYType : swapPool.tokenXType;
+
+      if (currentCoinType === outputCoinType) {
+        return currentCoin;
+      }
+
+      currentAmount = txb.moveCall({
+        target: '0x2::coin::value',
+        arguments: [currentCoin],
+        typeArguments: [currentCoinType],
+      });
+    }
+
+    return currentCoin;
+  }
+
+  public async claimFeeAs({
+    txb,
+    pool,
+    positionId,
+    targetCoinType,
+    slippage = 1,
+    useMvr = true,
+    toAddress,
+  }: {
+    txb: Transaction;
+    pool: PoolParams;
+    positionId: string | TransactionArgument;
+    targetCoinType: string;
+    slippage: number; // 1 = 1%
+    useMvr?: boolean;
+    toAddress?: string;
+  }) {
+    const { feeCoinA, feeCoinB } = this.collectFee(txb, pool, positionId, undefined, useMvr);
+
+    const outputCoinA = await this._findRouteAndSwap({
+      txb,
+      inputCoinType: pool.tokenXType,
+      inputCoin: feeCoinA,
+      outputCoinType: targetCoinType,
+      slippage,
+      useMvr,
+      usedPoolId: pool.objectId,
+    });
+
+    const outputCoinB = await this._findRouteAndSwap({
+      txb,
+      inputCoinType: pool.tokenYType,
+      inputCoin: feeCoinB,
+      outputCoinType: targetCoinType,
+      slippage,
+      useMvr,
+      usedPoolId: pool.objectId,
+    });
+
+    txb.mergeCoins(outputCoinA, [outputCoinB]);
+
+    if (toAddress) {
+      return txb.transferObjects([outputCoinA], txb.pure.address(toAddress));
+    }
+
+    return outputCoinA;
+  }
+
+  public async claimRewardsAs({
+    txb,
+    pool,
+    positionId,
+    rewarders,
+    targetCoinType,
+    slippage = 1,
+  }: {
+    txb: Transaction;
+    pool: PoolParams;
+    positionId: string | TransactionArgument;
+    rewarders: Rewarder[];
+    targetCoinType: string;
+    slippage: number;
+  }) {
+    if (!rewarders || rewarders.length === 0) {
+      return undefined;
+    }
+
+    const rewardCoins = new Map<string, TransactionObjectArgument[]>();
+
+    // Use forEach instead of map since we're not using the return value
+    rewarders.forEach((rewarder) => {
+      const rewardCoinType = rewarder.coin_type;
+      const rewardCoin = this.collectReward(txb, pool, positionId, rewardCoinType, undefined);
+
+      if (rewardCoins.has(rewardCoinType)) {
+        rewardCoins.get(rewardCoinType)?.push(rewardCoin);
+      } else {
+        rewardCoins.set(rewardCoinType, [rewardCoin]);
+      }
+    });
+
+    const mergedRewardCoins = Array.from(rewardCoins.keys()).map((rewardCoinType) => {
+      const coins = rewardCoins.get(rewardCoinType);
+
+      // Add safety check for coins array
+      if (!coins || coins.length === 0) {
+        throw new Error(`No reward coins found for type: ${rewardCoinType}`);
+      }
+
+      let finalCoin = coins[0];
+      for (let i = 1; i < coins.length; i++) {
+        txb.mergeCoins(finalCoin, [coins[i]]);
+      }
+      return {
+        type: rewardCoinType,
+        coin: finalCoin,
+      };
+    });
+
+    let outputCoin: TransactionObjectArgument | undefined;
+
+    for (const { type, coin } of mergedRewardCoins) {
+      const currentCoin = await this._findRouteAndSwap({
+        txb,
+        inputCoinType: type,
+        inputCoin: coin,
+        outputCoinType: targetCoinType,
+        slippage,
+      });
+      if (!outputCoin) {
+        outputCoin = currentCoin;
+      } else {
+        txb.mergeCoins(outputCoin, [currentCoin]);
+      }
+    }
+
+    return outputCoin;
   }
 }

@@ -1,5 +1,11 @@
 import Decimal from 'decimal.js';
-import { ExtendedPoolWithApr, RewardersAPYSchema, TokenSchema } from '../types';
+import {
+  ExtendedPool,
+  ExtendedPoolWithApr,
+  PoolParams,
+  RewardersAPYSchema,
+  TokenSchema,
+} from '../types';
 import { MathUtil } from './math/commonMath';
 import BN from 'bn.js';
 import { convertI32ToSigned, TickMath } from './math/tickMath';
@@ -469,3 +475,44 @@ export const mappedCetusPool = {
     isCetusReverse: false,
   },
 };
+
+export async function getLimitSqrtPriceUsingSlippage({
+  client,
+  poolId,
+  currentSqrtPrice,
+  tokenX,
+  tokenY,
+  slippagePercentage,
+  isTokenX,
+}: Pick<ExtendedPool, 'poolId' | 'tokenX' | 'tokenY'> & {
+  client: SuiClient;
+  currentSqrtPrice?: string;
+  slippagePercentage: number; // 1 = 1% slippage
+  isTokenX: boolean;
+}) {
+  const rpcPool = await client.getObject({
+    id: poolId,
+    options: { showContent: true },
+  });
+
+  const rpcPoolCurrentPrice =
+    (rpcPool?.data?.content as any)?.fields?.sqrt_price ?? currentSqrtPrice;
+
+  const currentPrice = TickMath.sqrtPriceX64ToPrice(
+    new BN(rpcPoolCurrentPrice?.toString()),
+    tokenX.decimals,
+    tokenY.decimals,
+  );
+
+  const minReceiveRate = isTokenX
+    ? (100 - slippagePercentage) / 100
+    : (100 + slippagePercentage) / 100;
+
+  const limitSqrtPrice = TickMath.priceToSqrtPriceX64(
+    currentPrice.mul(minReceiveRate),
+    tokenX.decimals,
+    tokenY.decimals,
+  );
+
+  return BigInt(limitSqrtPrice.toString());
+}
