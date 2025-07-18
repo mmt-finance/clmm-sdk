@@ -117,6 +117,14 @@ export type Rewarder = {
   hasEnded: boolean;
 };
 
+export type NormalizedRewarder = {
+  coinType: string;
+  flowRate: number;
+  hasEnded: boolean;
+  rewardAmount: number;
+  rewardsAllocated: number;
+};
+
 export interface RewardersAPYSchema {
   pool_id: string; // Foreign key to PoolSchema
   rewarders: Rewarder[]; // Array of coin types

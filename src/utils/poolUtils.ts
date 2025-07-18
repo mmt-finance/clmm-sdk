@@ -490,16 +490,16 @@ export async function getLimitSqrtPriceUsingSlippage({
   slippagePercentage: number; // 1 = 1% slippage
   isTokenX: boolean;
 }) {
-  const rpcPool = await client.getObject({
-    id: poolId,
-    options: { showContent: true },
-  });
+  // const rpcPool = await client.getObject({
+  //   id: poolId,
+  //   options: { showContent: true },
+  // });
 
-  const rpcPoolCurrentPrice =
-    (rpcPool?.data?.content as any)?.fields?.sqrt_price ?? currentSqrtPrice;
+  // const rpcPoolCurrentPrice =
+  //   (rpcPool?.data?.content as any)?.fields?.sqrt_price ?? currentSqrtPrice;
 
   const currentPrice = TickMath.sqrtPriceX64ToPrice(
-    new BN(rpcPoolCurrentPrice?.toString()),
+    new BN(currentSqrtPrice?.toString()),
     tokenX.decimals,
     tokenY.decimals,
   );
