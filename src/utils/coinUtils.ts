@@ -7,6 +7,12 @@ const isSUICoin = (coinType: string) => {
   return normalizeStructTag(coinType) === normalizeStructTag(ModuleConstants.suiCoinType);
 };
 
+const formatCoinType = (coinType: string) => {
+  return isSUICoin(coinType)
+    ? '0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI'
+    : coinType;
+};
+
 const getSuiCoin = (
   amount: bigint | TransactionArgument,
   txb: Transaction,
@@ -199,4 +205,5 @@ export {
   getAllUserCoins,
   getCoinsGreaterThanAmount,
   isSUICoin,
+  formatCoinType,
 };
