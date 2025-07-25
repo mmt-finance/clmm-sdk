@@ -12,6 +12,10 @@ const LOG_B_P_ERR_MARGIN_LOWER_X64 = '184467440737095516';
 const LOG_B_P_ERR_MARGIN_UPPER_X64 = '15793534762490258745';
 const TICK_BOUND = 443636;
 
+const MIN_I128 = BigInt('-170141183460469231731687303715884105728'); // -2^127
+const MAX_I128 = BigInt('170141183460469231731687303715884105727'); // 2^127 - 1
+const U128_MOD = BigInt('340282366920938463463374607431768211456');
+
 function signedShiftLeft(n0: BN, shiftBy: number, bitWidth: number) {
   const twosN0 = n0.toTwos(bitWidth).shln(shiftBy);
   twosN0.imaskn(bitWidth + 1);
@@ -46,6 +50,25 @@ export function convertSignedToI32(num: number) {
   } else {
     return num;
   }
+}
+
+export function convertI128ToSigned(num: string): bigint {
+  const n = BigInt(num);
+  const max = BigInt('0x7fffffffffffffffffffffffffffffff');
+  if (n > max) {
+    return n - BigInt('0x100000000000000000000000000000000');
+  }
+  return n;
+}
+
+export function convertSignedToI128(input: string | bigint): bigint {
+  const num = typeof input === 'string' ? BigInt(input) : input;
+
+  if (num < MIN_I128 || num > MAX_I128) {
+    throw new RangeError('The number is out of range for a 128-bit signed integer.');
+  }
+
+  return num < BigInt(0) ? U128_MOD + num : num;
 }
 
 function tickIndexToSqrtPricePositive(tick: number) {
