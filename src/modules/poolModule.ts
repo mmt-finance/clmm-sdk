@@ -1185,6 +1185,24 @@ export class PoolModule implements BaseModule {
           .div(posValidTVL)
           .mul(new Decimal(365));
 
+    console.info('[feeAPR] Detailed Calculation:', {
+      deltaLiquidity: deltaLiquidity.toString(),
+      poolLiquidityHM: poolLiquidityHM.toString(),
+      feeRate,
+      swapVolume: swapVolume.toString(),
+      posValidTVL: posValidTVL.toString(),
+      liquidityShare: new Decimal(deltaLiquidity.toString())
+        .div(new Decimal(poolLiquidityHM.toString()))
+        .toString(),
+      rawFeeAmount: new Decimal(feeRate).mul(swapVolume).toString(),
+      aprBeforeAnnualized: new Decimal(feeRate)
+        .mul(swapVolume)
+        .mul(new Decimal(deltaLiquidity.toString()).div(new Decimal(poolLiquidityHM.toString())))
+        .div(posValidTVL)
+        .toString(),
+      feeAPR: feeAPR.toString(),
+    });
+
     poolRewarders?.map((item) => {
       if (item.hasEnded) return;
       const rewarderDecimals = item.rewardsDecimal;
@@ -1474,5 +1492,39 @@ export class PoolModule implements BaseModule {
       feeAPR,
       rewarderApr,
     };
+  }
+
+  public async getMinTickRangeFactor(
+    poolId: string,
+    coinXType: string,
+    coinYType: string,
+    useMvr: boolean = true,
+  ): Promise<number> {
+    const tx = new Transaction();
+    const targetPackage = applyMvrPackage(tx, this.sdk, useMvr);
+
+    tx.moveCall({
+      target: `${targetPackage}::pool::min_tick_range_factor`,
+      typeArguments: [coinXType, coinYType],
+      arguments: [tx.object(poolId)],
+    });
+
+    const res = await this.sdk.rpcClient.devInspectTransactionBlock({
+      transactionBlock: tx,
+      sender: normalizeSuiAddress('0x0'),
+      additionalArgs: { showRawTxnDataAndEffects: true },
+    });
+
+    if (res.error || res.effects?.status.status !== 'success') {
+      throw new Error(`Failed to get min tick range factor: ${res.error || 'Unknown failure'}`);
+    }
+
+    const returnValue = res.results?.[0]?.returnValues?.[0]?.[0];
+    if (!returnValue) {
+      throw new Error('No return value from min_tick_range_factor call');
+    }
+
+    const minTickRangeFactor = bcs.u32().parse(new Uint8Array(returnValue));
+    return Number(minTickRangeFactor);
   }
 }
