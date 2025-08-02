@@ -9,6 +9,7 @@ describe('RouteModule', () => {
   beforeEach(() => {
     sdk = MmtSDK.NEW({
       network: 'mainnet',
+      suiClientUrl: 'https://sui.blockpi.network/v1/rpc/b4b4c090cd3368100b0c59ff3b42f696095adfba',
     });
     routeModule = sdk.Route;
   });
