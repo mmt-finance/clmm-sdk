@@ -12,6 +12,7 @@ import {
   TokenSchema,
   ExtendedPoolWithApr,
   PreSwapParam,
+  NormalizedRewarder,
 } from '../types';
 import { MmtSDK } from '../sdk';
 import { BaseModule } from '../interfaces/BaseModule';
@@ -27,6 +28,7 @@ import {
   fetchTickLiquidityApi,
   fetchTokenApi,
   fetchUserObjectsByPkg,
+  getLimitSqrtPriceUsingSlippage,
   handleMmtCetusSwap,
 } from '../utils/poolUtils';
 import BN from 'bn.js';
@@ -35,6 +37,8 @@ import { convertI32ToSigned, TickMath } from '../utils/math/tickMath';
 import { MathUtil } from '../utils/math/commonMath';
 import { bcs } from '@mysten/sui/bcs';
 import { applyMvrPackage } from '../utils/mvr/utils';
+import { formatCoinType, isSUICoin, mergeCoins } from '../utils/coinUtils';
+import { CLAIM_ROUTES } from '../constants/claim-routes';
 
 export const Q_64 = '18446744073709551616';
 export class PoolModule implements BaseModule {
@@ -92,12 +96,62 @@ export class PoolModule implements BaseModule {
     txb: Transaction,
     pool: PoolParams,
     amount: bigint | TransactionArgument,
-    inputCoin: any,
+    inputCoin: TransactionArgument,
     isXtoY: boolean,
     transferToAddress?: string,
     limitSqrtPrice?: bigint,
     useMvr: boolean = true,
   ) {
+    const result = this.swapV2({
+      txb,
+      pool,
+      amount,
+      inputCoin,
+      isXtoY,
+      transferToAddress,
+      limitSqrtPrice,
+      useMvr,
+    });
+
+    return result?.outputCoin;
+  }
+
+  /**
+   * @params txb: Transaction
+   * @params pool: PoolParams
+   * @params amount: bigint | TransactionArgument
+   * @params inputCoin: any
+   * @params isXtoY: boolean
+   * @params transferToAddress?: string
+   * @params limitSqrtPrice?: bigint
+   * @params useMvr?: boolean
+   *
+   * @returns: if transferToAddress is provided, all the coins will be transferred to the address
+   * @returns: if transferToAddress is not provided, the outputCoin will be returned, and leftover of inputCoin will be returned
+   * {
+   *  outputCoin: TransactionObjectArgument;
+   *  leftoverCoin: TransactionObjectArgument;
+   * }
+   */
+  public swapV2({
+    txb,
+    pool,
+    amount,
+    inputCoin,
+    isXtoY,
+    transferToAddress,
+    limitSqrtPrice,
+    useMvr = true,
+  }: {
+    txb: Transaction;
+    pool: PoolParams;
+    amount: bigint | TransactionArgument;
+    inputCoin: TransactionArgument;
+    isXtoY: boolean;
+    transferToAddress?: string;
+    limitSqrtPrice?: bigint;
+    useMvr?: boolean;
+  }) {
     const targetPackage = applyMvrPackage(txb, this.sdk, useMvr);
 
     const LowLimitPrice = BigInt('4295048017');
@@ -196,7 +250,10 @@ export class PoolModule implements BaseModule {
       txb.transferObjects([inputCoin], txb.pure.address(transferToAddress));
       txb.transferObjects([outputCoin], txb.pure.address(transferToAddress));
     } else {
-      return outputCoin;
+      return {
+        outputCoin,
+        leftoverCoin: inputCoin,
+      };
     }
   }
 
@@ -665,18 +722,24 @@ export class PoolModule implements BaseModule {
     }
   }
 
-  public async collectAllPoolsRewards(userAddress: string, pools: ExtendedPool[]) {
-    if (!userAddress) {
-      throw new Error('sender is required');
+  private async _getUserAllPositionObjects(address: string) {
+    if (!address) {
+      throw new Error('address is required');
     }
+
     const objects = await fetchUserObjectsByPkg(
       this.sdk.rpcClient,
       this.sdk.contractConst.publishedAt,
-      userAddress,
+      address,
     );
-    const positions = objects.filter(
+
+    return objects.filter(
       (obj: any) => obj.type === `${this.sdk.contractConst.publishedAt}::position::Position`,
     );
+  }
+
+  public async collectAllPoolsRewards(userAddress: string, pools: ExtendedPool[]) {
+    const positions = await this._getUserAllPositionObjects(userAddress);
     return this.fetchRewardsAndFee(positions, pools, userAddress);
   }
 
@@ -1474,6 +1537,265 @@ export class PoolModule implements BaseModule {
       feeAPR,
       rewarderApr,
     };
+  }
+
+  public time = 0;
+
+  private async _findRouteAndSwap({
+    txb,
+    inputCoinType,
+    inputCoin,
+    outputCoinType,
+    slippage = 1,
+    useMvr = true,
+    toAddress,
+    pools,
+  }: {
+    txb: Transaction;
+    inputCoinType: string;
+    inputCoin: TransactionObjectArgument;
+    outputCoinType: string;
+    slippage: number; // 1 = 1%
+    toAddress: string;
+    useMvr?: boolean;
+    pools: ExtendedPoolWithApr[];
+  }) {
+    inputCoinType = formatCoinType(inputCoinType);
+    outputCoinType = formatCoinType(outputCoinType);
+
+    if (inputCoinType === outputCoinType) {
+      return inputCoin;
+    }
+
+    const routes = CLAIM_ROUTES?.[outputCoinType]?.[inputCoinType];
+
+    if (!routes || routes.length === 0) {
+      throw new Error(`No swap route found from ${inputCoinType} to ${outputCoinType}`);
+    }
+
+    const allPools = pools || (await this.getAllPools());
+
+    let currentCoin = inputCoin;
+    let currentAmount = txb.moveCall({
+      target: '0x2::coin::value',
+      arguments: [currentCoin],
+      typeArguments: [inputCoinType],
+    });
+    let currentCoinType = inputCoinType;
+
+    for (let i = 0; i < routes.length; i++) {
+      const poolId = routes[i];
+      const swapPool = allPools.find((p) => p.poolId === poolId);
+
+      if (!swapPool) {
+        throw new Error(`Pool ${poolId} not found`);
+      }
+
+      const isXtoY = swapPool.tokenXType === currentCoinType;
+
+      const poolParams: PoolParams = {
+        objectId: poolId,
+        tokenXType: swapPool.tokenXType,
+        tokenYType: swapPool.tokenYType,
+      };
+
+      const limitSqrtPrice = await getLimitSqrtPriceUsingSlippage({
+        client: this.sdk.rpcClient,
+        poolId: swapPool.poolId,
+        currentSqrtPrice: swapPool.currentSqrtPrice,
+        tokenX: swapPool.tokenX,
+        tokenY: swapPool.tokenY,
+        slippagePercentage: slippage,
+        isTokenX: isXtoY,
+      });
+
+      const { outputCoin, leftoverCoin } = this.swapV2({
+        txb,
+        pool: poolParams,
+        amount: currentAmount,
+        inputCoin: currentCoin,
+        isXtoY,
+        limitSqrtPrice,
+        useMvr,
+      });
+
+      txb.transferObjects([leftoverCoin], txb.pure.address(toAddress));
+
+      currentCoin = outputCoin;
+
+      currentCoinType = isXtoY ? swapPool.tokenYType : swapPool.tokenXType;
+      currentCoinType = formatCoinType(currentCoinType);
+
+      if (currentCoinType === outputCoinType) {
+        return currentCoin;
+      }
+
+      currentAmount = txb.moveCall({
+        target: '0x2::coin::value',
+        arguments: [currentCoin],
+        typeArguments: [currentCoinType],
+      });
+    }
+
+    return currentCoin;
+  }
+
+  /**
+   * @description:
+   * claim fee as a single coin
+   *
+   * @params txb: Transaction
+   * @params pool: PoolParams
+   * @params positionId: string | TransactionArgument
+   * @params targetCoinType: string
+   * @params slippage: number // 1 = 1%
+   * @params toAddress: string
+   * @params useMvr?: boolean
+   * @returns:
+   * if toAddress is provided, all the coins will be transferred to the address
+   * if toAddress is not provided, the outputCoin will be returned, and leftover of inputCoin will be returned
+   * {
+   *  outputCoin: TransactionObjectArgument;
+   *  leftoverCoin: TransactionObjectArgument;
+   * }
+   */
+  public async claimFeeAs({
+    txb,
+    pool,
+    positionId,
+    targetCoinType,
+    slippage = 1,
+    useMvr = true,
+    toAddress,
+    pools,
+  }: {
+    txb: Transaction;
+    pool: PoolParams;
+    positionId: string | TransactionArgument;
+    targetCoinType: string;
+    slippage: number; // 1 = 1%
+    toAddress: string;
+    useMvr?: boolean;
+    pools?: ExtendedPoolWithApr[];
+  }) {
+    const { feeCoinA, feeCoinB } = this.collectFee(txb, pool, positionId, undefined, useMvr);
+
+    const outputCoinA = await this._findRouteAndSwap({
+      txb,
+      inputCoinType: pool.tokenXType,
+      inputCoin: feeCoinA,
+      outputCoinType: targetCoinType,
+      slippage,
+      useMvr,
+      toAddress,
+      pools,
+    });
+
+    const outputCoinB = await this._findRouteAndSwap({
+      txb,
+      inputCoinType: pool.tokenYType,
+      inputCoin: feeCoinB,
+      outputCoinType: targetCoinType,
+      slippage,
+      useMvr,
+      toAddress,
+      pools,
+    });
+
+    txb.mergeCoins(outputCoinA, [outputCoinB]);
+
+    if (toAddress) {
+      return txb.transferObjects([outputCoinA], txb.pure.address(toAddress));
+    }
+
+    return outputCoinA;
+  }
+
+  public async claimRewardsAs({
+    txb,
+    pool,
+    positionId,
+    rewarderCoinTypes,
+    targetCoinType,
+    slippage = 1,
+    toAddress,
+    useMvr = true,
+    pools,
+  }: {
+    txb: Transaction;
+    pool: PoolParams;
+    positionId: string | TransactionArgument;
+    rewarderCoinTypes: string[];
+    targetCoinType: string;
+    slippage: number;
+    toAddress: string;
+    useMvr?: boolean;
+    pools?: ExtendedPoolWithApr[];
+  }) {
+    if (!rewarderCoinTypes || rewarderCoinTypes.length === 0) {
+      return undefined;
+    }
+
+    const rewardCoins = new Map<string, TransactionObjectArgument[]>();
+
+    rewarderCoinTypes.forEach((rewardCoinType) => {
+      const rewardCoin = this.collectReward(
+        txb,
+        pool,
+        positionId,
+        rewardCoinType,
+        undefined,
+        useMvr,
+      );
+
+      if (rewardCoins.has(rewardCoinType)) {
+        rewardCoins.get(rewardCoinType)?.push(rewardCoin);
+      } else {
+        rewardCoins.set(rewardCoinType, [rewardCoin]);
+      }
+    });
+
+    const mergedRewardCoins = Array.from(rewardCoins.keys())
+      .map((rewardCoinType) => {
+        const coins = rewardCoins.get(rewardCoinType);
+
+        if (!coins || coins.length === 0) {
+          return undefined;
+        }
+
+        return {
+          type: rewardCoinType,
+          coin: mergeCoins(coins, txb),
+        };
+      })
+      .filter(Boolean);
+
+    let outputCoin: TransactionObjectArgument | undefined;
+
+    for (const { type, coin } of mergedRewardCoins) {
+      const currentCoin = await this._findRouteAndSwap({
+        txb,
+        inputCoinType: type,
+        inputCoin: coin,
+        outputCoinType: targetCoinType,
+        slippage,
+        toAddress,
+        useMvr,
+        pools,
+      });
+
+      if (!outputCoin) {
+        outputCoin = currentCoin;
+      } else {
+        txb.mergeCoins(outputCoin, [currentCoin]);
+      }
+    }
+
+    if (toAddress) {
+      return txb.transferObjects([outputCoin], txb.pure.address(toAddress));
+    }
+
+    return outputCoin;
   }
 
   public async getMinTickRangeFactor(
