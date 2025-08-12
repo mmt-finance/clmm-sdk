@@ -1185,24 +1185,6 @@ export class PoolModule implements BaseModule {
           .div(posValidTVL)
           .mul(new Decimal(365));
 
-    console.info('[feeAPR] Detailed Calculation:', {
-      deltaLiquidity: deltaLiquidity.toString(),
-      poolLiquidityHM: poolLiquidityHM.toString(),
-      feeRate,
-      swapVolume: swapVolume.toString(),
-      posValidTVL: posValidTVL.toString(),
-      liquidityShare: new Decimal(deltaLiquidity.toString())
-        .div(new Decimal(poolLiquidityHM.toString()))
-        .toString(),
-      rawFeeAmount: new Decimal(feeRate).mul(swapVolume).toString(),
-      aprBeforeAnnualized: new Decimal(feeRate)
-        .mul(swapVolume)
-        .mul(new Decimal(deltaLiquidity.toString()).div(new Decimal(poolLiquidityHM.toString())))
-        .div(posValidTVL)
-        .toString(),
-      feeAPR: feeAPR.toString(),
-    });
-
     poolRewarders?.map((item) => {
       if (item.hasEnded) return;
       const rewarderDecimals = item.rewardsDecimal;
