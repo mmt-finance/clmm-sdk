@@ -12,10 +12,10 @@ describe('PoolModule.getMinTickRangeFactor', () => {
     poolModule = sdk.Pool;
   });
 
-  it.skip('getMinTickRangeFactor positive', async () => {
-    const poolId = '0x9955e9472d0d4940004271d7ed8ab034cd895071b59d43f0decb1dcc1404dcfd';
+  it('getMinTickRangeFactor positive', async () => {
+    const poolId = '0x455cf8d2ac91e7cb883f515874af750ed3cd18195c970b7a2d46235ac2b0c388';
     const coinXType =
-      '0x2053d08c1e2bd02791056171aab0fd12bd7cd7efad2ab8f6b9c8902f14df2ff2::ausd::AUSD';
+      '0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI';
     const coinYType =
       '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC';
 
