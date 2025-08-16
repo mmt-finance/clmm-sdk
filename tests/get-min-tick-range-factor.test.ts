@@ -1,5 +1,6 @@
 import { MmtSDK, PoolModule } from '../src';
 import { describe, it, beforeEach, expect } from '@jest/globals';
+import { ExtendedPoolWithApr } from '../src/types';
 
 describe('PoolModule.getMinTickRangeFactor', () => {
   let sdk: MmtSDK;
@@ -13,13 +14,73 @@ describe('PoolModule.getMinTickRangeFactor', () => {
   });
 
   it('getMinTickRangeFactor positive', async () => {
-    const poolId = '0x455cf8d2ac91e7cb883f515874af750ed3cd18195c970b7a2d46235ac2b0c388';
-    const coinXType =
-      '0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI';
-    const coinYType =
-      '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC';
+    const pools = await poolModule.getAllPools();
+    const poolIds = pools.map((pool) => pool.poolId);
+    const tokenXTypes = pools.map((pool) => pool.tokenXType);
+    const tokenYTypes = pools.map((pool) => pool.tokenYType);
 
-    const minTickRangeFactor = await poolModule.getMinTickRangeFactor(poolId, coinXType, coinYType);
-    expect(minTickRangeFactor).toBeGreaterThan(0);
+    const result = await poolModule.getMinTickRangeFactor(poolIds, tokenXTypes, tokenYTypes);
+    expect(result[0].minTickRangeFactor).toBeGreaterThan(0);
+    expect(result[0].poolId).toEqual(poolIds[0]);
+  }, 100000);
+
+  it('getMinTickRangeFactor negative bigger than 1024', async () => {
+    const pools = await poolModule.getAllPools();
+    const poolsCopy = [
+      ...pools,
+      ...pools,
+      ...pools,
+      ...pools,
+      ...pools,
+      ...pools,
+      ...pools,
+      ...pools,
+      ...pools,
+      ...pools,
+      ...pools,
+      ...pools,
+      ...pools,
+      ...pools,
+      ...pools,
+      ...pools,
+      ...pools,
+      ...pools,
+    ] as ExtendedPoolWithApr[];
+    const poolIds = poolsCopy.map((pool) => pool.poolId);
+    const tokenXTypes = poolsCopy.map((pool) => pool.tokenXType);
+    const tokenYTypes = poolsCopy.map((pool) => pool.tokenYType);
+
+    await expect(
+      poolModule.getMinTickRangeFactor(poolIds, tokenXTypes, tokenYTypes),
+    ).rejects.toThrow(
+      'Invalid input: poolIds must not be empty and must less than 1024 and coinXTypes must match coinYTypes',
+    );
+  }, 100000);
+
+  it('getMinTickRangeFactor negative pools equal to 0', async () => {
+    const pools = [];
+    const poolIds = pools.map((pool) => pool.poolId);
+    const tokenXTypes = pools.map((pool) => pool.tokenXType);
+    const tokenYTypes = pools.map((pool) => pool.tokenYType);
+
+    await expect(
+      poolModule.getMinTickRangeFactor(poolIds, tokenXTypes, tokenYTypes),
+    ).rejects.toThrow(
+      'Invalid input: poolIds must not be empty and must less than 1024 and coinXTypes must match coinYTypes',
+    );
+  }, 100000);
+
+  it('getMinTickRangeFactor negative coinXTypes not match coinYTypes', async () => {
+    const pools = await poolModule.getAllPools();
+    const poolIds = pools.map((pool) => pool.poolId);
+    const tokenXTypes = pools.map((pool) => pool.tokenXType);
+    const tokenYTypes = pools.map((pool) => pool.tokenYType);
+    tokenXTypes.push(tokenXTypes[0]);
+
+    await expect(
+      poolModule.getMinTickRangeFactor(poolIds, tokenXTypes, tokenYTypes),
+    ).rejects.toThrow(
+      'Invalid input: poolIds must not be empty and must less than 1024 and coinXTypes must match coinYTypes',
+    );
   }, 100000);
 });

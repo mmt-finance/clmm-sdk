@@ -1799,19 +1799,27 @@ export class PoolModule implements BaseModule {
   }
 
   public async getMinTickRangeFactor(
-    poolId: string,
-    coinXType: string,
-    coinYType: string,
+    poolIds: string[],
+    coinXTypes: string[],
+    coinYTypes: string[],
     useMvr: boolean = true,
-  ): Promise<number> {
+  ): Promise<Array<{ poolId: string; minTickRangeFactor: number }>> {
+    if (poolIds.length === 0 || poolIds.length > 1024 || coinXTypes.length !== coinYTypes.length) {
+      throw new Error(
+        'Invalid input: poolIds must not be empty and must less than 1024 and coinXTypes must match coinYTypes',
+      );
+    }
+
     const tx = new Transaction();
     const targetPackage = applyMvrPackage(tx, this.sdk, useMvr);
 
-    tx.moveCall({
-      target: `${targetPackage}::pool::min_tick_range_factor`,
-      typeArguments: [coinXType, coinYType],
-      arguments: [tx.object(poolId)],
-    });
+    for (let i = 0; i < poolIds.length; i++) {
+      tx.moveCall({
+        target: `${targetPackage}::pool::min_tick_range_factor`,
+        typeArguments: [coinXTypes[i], coinYTypes[i]],
+        arguments: [tx.object(poolIds[i])],
+      });
+    }
 
     const res = await this.sdk.rpcClient.devInspectTransactionBlock({
       transactionBlock: tx,
@@ -1820,15 +1828,26 @@ export class PoolModule implements BaseModule {
     });
 
     if (res.error || res.effects?.status.status !== 'success') {
-      throw new Error(`Failed to get min tick range factor: ${res.error || 'Unknown failure'}`);
+      throw new Error(`Failed to get min tick range factors: ${res.error || 'Unknown failure'}`);
     }
 
-    const returnValue = res.results?.[0]?.returnValues?.[0]?.[0];
-    if (!returnValue) {
-      throw new Error('No return value from min_tick_range_factor call');
+    const results: Array<{ poolId: string; minTickRangeFactor: number }> = [];
+
+    if (res.results && res.results.length > 0) {
+      for (let i = 0; i < poolIds.length; i++) {
+        const returnValue = res.results[i]?.returnValues?.[0]?.[0];
+        if (!returnValue) {
+          throw new Error(`No return value from min_tick_range_factor call for pool ${poolIds[i]}`);
+        }
+
+        const minTickRangeFactor = bcs.u32().parse(new Uint8Array(returnValue));
+        results.push({
+          poolId: poolIds[i],
+          minTickRangeFactor: Number(minTickRangeFactor),
+        });
+      }
     }
 
-    const minTickRangeFactor = bcs.u32().parse(new Uint8Array(returnValue));
-    return Number(minTickRangeFactor);
+    return results;
   }
 }
