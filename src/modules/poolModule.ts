@@ -1804,6 +1804,12 @@ export class PoolModule implements BaseModule {
     coinYTypes: string[],
     useMvr: boolean = true,
   ): Promise<Array<{ poolId: string; minTickRangeFactor: number }>> {
+    if (poolIds.length === 0 || poolIds.length > 1024 || coinXTypes.length !== coinYTypes.length) {
+      throw new Error(
+        'Invalid input: poolIds must not be empty and must less than 1024 and coinXTypes must match coinYTypes',
+      );
+    }
+
     const tx = new Transaction();
     const targetPackage = applyMvrPackage(tx, this.sdk, useMvr);
 
