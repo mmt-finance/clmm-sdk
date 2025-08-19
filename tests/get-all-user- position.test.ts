@@ -14,7 +14,9 @@ describe('PositionModule.getAllUserPosition', () => {
 
   it.skip('should return user position', async () => {
     const senderAddress = '0x750369dcaeae67136313f687ee367f9207b0b6fa0ffc684f5aa847e3c3bb9538';
-    const userPositions = await positionModule.getAllUserPositions(senderAddress);
+    const tokens = await sdk.Pool.getAllTokens();
+    const pools = await sdk.Pool.getAllPools();
+    const userPositions = await positionModule.getAllUserPositions(senderAddress, pools, tokens);
     expect(userPositions).toBeDefined();
   }, 30000);
 });
