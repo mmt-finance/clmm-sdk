@@ -209,12 +209,16 @@ export class PositionModule implements BaseModule {
       .filter(Boolean);
   }
 
-  public async getAllUserPositions(address: string) {
+  public async getAllUserPositions(
+    address: string,
+    pools?: ExtendedPool[],
+    tokens?: TokenSchema[],
+  ) {
     try {
-      const [objects, pools, tokens] = await Promise.all([
+      const [objects, poolsData, tokensData] = await Promise.all([
         fetchUserObjectsByPkg(this.sdk.rpcClient, this.sdk.contractConst.publishedAt, address),
-        this.sdk.Pool.getAllPools(),
-        this.sdk.Pool.getAllTokens(),
+        pools || this.sdk.Pool.getAllPools(),
+        tokens || this.sdk.Pool.getAllTokens(),
       ]);
       const positions = objects.filter(
         (obj: any) => obj.type === `${this.sdk.contractConst.publishedAt}::position::Position`,
@@ -222,19 +226,21 @@ export class PositionModule implements BaseModule {
 
       const positionRewardsInfo = await this.fetchRewards(
         positions,
-        pools,
+        poolsData,
         address,
         this.sdk.rpcClient,
       );
 
-      const tokenPriceMap = new Map(tokens.map((token) => [token.coinType, Number(token.price)]));
+      const tokenPriceMap = new Map(
+        tokensData.map((token) => [token.coinType, Number(token.price)]),
+      );
 
       return positions
         .map((position: any) => {
           const positionData = position.fields;
           if (!positionData) return null;
 
-          const pool = pools.find((p) => p.poolId === positionData.pool_id);
+          const pool = poolsData.find((p) => p.poolId === positionData.pool_id);
           if (!pool) return null;
           const liquidity = new BN(positionData.liquidity ?? 0);
           const upperBits = Number(positionData.tick_upper_index.fields.bits ?? 0);
@@ -283,7 +289,7 @@ export class PositionModule implements BaseModule {
                 const coinType = reward.coinType.includes('0x2::sui::SUI')
                   ? '0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI'
                   : reward.coinType;
-                const token = tokens.find((t) => t.coinType === coinType);
+                const token = tokensData.find((t) => t.coinType === coinType);
                 return total + (reward.amount / 10 ** token.decimals) * tokenPriceMap.get(coinType);
               }, 0)
             : 0;
