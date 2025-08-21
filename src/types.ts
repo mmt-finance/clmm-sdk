@@ -50,6 +50,8 @@ export interface PoolApi {
   tokenXType: string;
   tokenYType: string;
   isStable: boolean;
+  minTickRangeFactor: number;
+  isDeprecated: boolean;
   lpFeesPercent: string;
   protocolFeesPercent: string;
   currentSqrtPrice: string;
