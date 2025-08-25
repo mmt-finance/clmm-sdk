@@ -36,7 +36,12 @@ export class PositionModule implements BaseModule {
     useMvr: boolean = true,
   ) {
     const targetPackage = applyMvrPackage(txb, this.sdk, useMvr);
+    if (typeof lower_tick_sqrt_price === 'string' && typeof upper_tick_sqrt_price === 'string') {
+      const lowerTick = TickMath.sqrtPriceX64ToTickIndex(new BN(lower_tick_sqrt_price));
+      const upperTick = TickMath.sqrtPriceX64ToTickIndex(new BN(upper_tick_sqrt_price));
 
+      this.checkTickRangeValidity(lowerTick, upperTick, pool);
+    }
     const [lowerTick1] = txb.moveCall({
       target: `${targetPackage}::tick_math::get_tick_at_sqrt_price`,
       arguments: [
@@ -128,6 +133,22 @@ export class PositionModule implements BaseModule {
         }),
       ],
     });
+  }
+
+  private checkTickRangeValidity(lowerTick: number, upperTick: number, pool: PoolParams) {
+    if (pool.tickSpacing && pool.minTickRangeFactor) {
+      if (lowerTick >= upperTick) {
+        throw new Error(
+          `Invalid tick range: lower tick (${lowerTick}) must be less than upper tick (${upperTick})`,
+        );
+      }
+
+      const tickRange = upperTick - lowerTick;
+      const minRange = pool.tickSpacing * pool.minTickRangeFactor;
+      if (tickRange < minRange) {
+        throw new Error(`Tick range is too small. Minimum required: ${minRange}`);
+      }
+    }
   }
 
   public borrowMutRewardInfoObject(

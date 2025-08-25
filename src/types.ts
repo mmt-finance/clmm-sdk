@@ -4,6 +4,7 @@ export interface PoolParams {
   tokenYType: string;
   isStable?: boolean;
   tickSpacing?: number;
+  minTickRangeFactor?: number;
 }
 
 export interface PoolRpc {
