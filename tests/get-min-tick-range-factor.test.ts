@@ -1,6 +1,7 @@
 import { MmtSDK, PoolModule } from '../src';
 import { describe, it, beforeEach, expect } from '@jest/globals';
 import { ExtendedPoolWithApr } from '../src/types';
+import { Transaction } from '@mysten/sui/transactions';
 
 describe('PoolModule.getMinTickRangeFactor', () => {
   let sdk: MmtSDK;
@@ -83,4 +84,32 @@ describe('PoolModule.getMinTickRangeFactor', () => {
       'Invalid input: poolIds must not be empty and must less than 1024 and coinXTypes must match coinYTypes',
     );
   }, 100000);
+
+  it('should throw error when tick range is too small', async () => {
+    const poolId = '0xd970616a91e67a2aea8347bc6444ee6cab11657718ff0c4b833d4f5de12efad0';
+    const tokenXType =
+      '0xbde4ba4c2e274a60ce15c1cfff9e5c42e41654ac8b6d906a57efa4bd3c29f47d::hasui::HASUI';
+    const tokenYType =
+      '0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI';
+    const minTickRangeFactor = 5;
+    const tickSpacing = 2;
+    const lowerSqrtPrice = '19006601896370029129';
+    const upperSqrtPrice = '19014205677600719231';
+    const tx = new Transaction();
+
+    expect(() => {
+      sdk.Position.openPosition(
+        tx,
+        {
+          objectId: poolId, // Pool ID where liquidity is added
+          tokenXType: tokenXType, // Token X type
+          tokenYType: tokenYType, // Token Y type
+          tickSpacing: tickSpacing, // Pool tick spacing
+          minTickRangeFactor: minTickRangeFactor, // min tick range factor
+        },
+        lowerSqrtPrice, // Lower price bound
+        upperSqrtPrice, // Upper price bound
+      );
+    }).toThrow('Tick range (8) is too small. Minimum required: 10');
+  });
 });
