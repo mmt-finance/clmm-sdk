@@ -1100,6 +1100,7 @@ export class PoolModule implements BaseModule {
       amountB,
       decimalsA,
       decimalsB,
+      currentSqrtPriceD,
       lowerSqrtPriceD,
       upperSqrtPriceD,
     );
@@ -1217,6 +1218,7 @@ export class PoolModule implements BaseModule {
       amountB,
       decimalsA,
       decimalsB,
+      currentSqrtPriceD,
       lowerSqrtPriceD,
       upperSqrtPriceD,
     );
@@ -1279,19 +1281,20 @@ export class PoolModule implements BaseModule {
     amountB: Decimal,
     decimalsA: number,
     decimalsB: number,
+    currentSqrtPriceD: Decimal,
     lowerSqrtPriceD: Decimal,
     upperSqrtPriceD: Decimal,
   ) {
     const liquidityAmount0 = amountA
       .mul(new Decimal(10 ** decimalsA))
-      .mul(upperSqrtPriceD.mul(lowerSqrtPriceD))
+      .mul(upperSqrtPriceD.mul(currentSqrtPriceD))
       .div(new Decimal(Q_64))
-      .div(upperSqrtPriceD.sub(lowerSqrtPriceD))
+      .div(upperSqrtPriceD.sub(currentSqrtPriceD))
       .round();
     const liquidityAmount1 = amountB
       .mul(new Decimal(10 ** decimalsB))
       .mul(new Decimal(Q_64))
-      .div(upperSqrtPriceD.sub(lowerSqrtPriceD))
+      .div(currentSqrtPriceD.sub(lowerSqrtPriceD))
       .round();
     return { liquidityAmount0, liquidityAmount1 };
   }
