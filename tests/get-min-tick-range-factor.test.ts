@@ -110,6 +110,6 @@ describe('PoolModule.getMinTickRangeFactor', () => {
         lowerSqrtPrice, // Lower price bound
         upperSqrtPrice, // Upper price bound
       );
-    }).toThrow('Tick range (8) is too small. Minimum required: 10');
+    }).toThrow('Tick range is too small. Minimum required: 10');
   });
 });
