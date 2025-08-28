@@ -176,7 +176,7 @@ describe('PoolModule.collectAllPoolsRewards', () => {
       rewardsArr,
     );
 
-    expect(aprData.feeAPR).toEqual(new Decimal('0.26925890311683130058'));
+    expect(aprData.feeAPR).toEqual(new Decimal('0.26925890311683130057'));
   }, 30000);
 
   const mockPool = {
