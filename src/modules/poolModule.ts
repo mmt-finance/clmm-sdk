@@ -12,7 +12,6 @@ import {
   TokenSchema,
   ExtendedPoolWithApr,
   PreSwapParam,
-  NormalizedRewarder,
 } from '../types';
 import { MmtSDK } from '../sdk';
 import { BaseModule } from '../interfaces/BaseModule';
@@ -33,7 +32,7 @@ import {
 } from '../utils/poolUtils';
 import BN from 'bn.js';
 import Decimal from 'decimal.js';
-import { convertI32ToSigned, TickMath } from '../utils/math/tickMath';
+import { convertI32ToSigned, convertSignedToI32, TickMath } from '../utils/math/tickMath';
 import { MathUtil } from '../utils/math/commonMath';
 import { bcs } from '@mysten/sui/bcs';
 import { applyMvrPackage } from '../utils/mvr/utils';
@@ -90,6 +89,115 @@ export class PoolModule implements BaseModule {
       typeArguments: [coinXType, coinYType],
       arguments: [pool],
     });
+  }
+
+  /**
+   * @description Create a new pool and add initial liquidity in a single transaction
+   * @param txb: Transaction
+   * @param fee_rate: number
+   * @param coinXType: string
+   * @param coinYType: string
+   * @param sqrtPrice: bigint
+   * @param initialLiquidityX: TransactionObjectArgument
+   * @param initialLiquidityY: TransactionObjectArgument
+   * @param transferToAddress: string
+   * @param lowerTick: number
+   * @param upperTick: number
+   * @param useMvr: boolean
+   * @returns: void
+   */
+  public async createPoolAndDeposit({
+    txb,
+    feeRate,
+    coinXType,
+    coinYType,
+    sqrtPrice,
+    initialLiquidityX,
+    initialLiquidityY,
+    transferToAddress,
+    lowerTick,
+    upperTick,
+    useMvr = true,
+  }: {
+    txb: Transaction;
+    feeRate: number;
+    coinXType: string;
+    coinYType: string;
+    sqrtPrice: bigint;
+    initialLiquidityX: TransactionObjectArgument;
+    initialLiquidityY: TransactionObjectArgument;
+    transferToAddress: string;
+    lowerTick: number;
+    upperTick: number;
+    useMvr?: boolean;
+  }) {
+    const targetPackage = applyMvrPackage(txb, this.sdk, useMvr);
+
+    const [pool] = txb.moveCall({
+      target: `${targetPackage}::create_pool::new`,
+      typeArguments: [coinXType, coinYType],
+      arguments: [
+        txb.object(this.sdk.contractConst.globalConfigId),
+        txb.pure.u64(feeRate),
+        txb.object(this.sdk.contractConst.versionId),
+      ],
+    });
+
+    txb.moveCall({
+      target: `${targetPackage}::pool::initialize`,
+      typeArguments: [coinXType, coinYType],
+      arguments: [pool, txb.pure.u128(sqrtPrice), txb.object(normalizeSuiObjectId('0x6'))],
+    });
+
+    function i32ToU32(n: number): number {
+      if (!Number.isFinite(n)) throw new Error('Invalid number');
+      if (n < -2147483648 || n > 2147483647) {
+        throw new Error('Out of i32 range');
+      }
+      return (n | 0) >>> 0;
+    }
+
+    const lowerTickI32Pure = txb.moveCall({
+      target: `${targetPackage}::i32::from_u32`,
+      arguments: [txb.pure.u32(i32ToU32(lowerTick))],
+    });
+    const upperTickI32Pure = txb.moveCall({
+      target: `${targetPackage}::i32::from_u32`,
+      arguments: [txb.pure.u32(i32ToU32(upperTick))],
+    });
+    const [position] = txb.moveCall({
+      target: `${targetPackage}::liquidity::open_position`,
+      arguments: [
+        pool,
+        lowerTickI32Pure,
+        upperTickI32Pure,
+        txb.object(this.sdk.contractConst.versionId),
+      ],
+      typeArguments: [coinXType, coinYType],
+    });
+
+    const [coinA, coinB] = txb.moveCall({
+      target: `${targetPackage}::liquidity::add_liquidity`,
+      typeArguments: [coinXType, coinYType],
+      arguments: [
+        pool,
+        position,
+        initialLiquidityX,
+        initialLiquidityY,
+        txb.pure.u64(0),
+        txb.pure.u64(0),
+        txb.object(normalizeSuiObjectId('0x6')),
+        txb.object(this.sdk.contractConst.versionId),
+      ],
+    });
+
+    txb.moveCall({
+      target: `${targetPackage}::pool::transfer`,
+      typeArguments: [coinXType, coinYType],
+      arguments: [pool],
+    });
+
+    txb.transferObjects([coinA, coinB, position], txb.pure.address(transferToAddress));
   }
 
   public swap(
@@ -372,7 +480,6 @@ export class PoolModule implements BaseModule {
       typeArguments: [pool.tokenXType, pool.tokenYType],
       arguments: [
         txb.object(pool.objectId),
-        // txb.object("0x06b1701f4a188877281b43b26cc3f96e9d0f9a0cd3aac8d06c914f1ebaa5846a"),
         txnArgument(position, txb),
         txnArgument(coinX, txb),
         txnArgument(coinY, txb),
