@@ -34,7 +34,7 @@
     "generate-claim-routes": "ts-node scripts/get-claim-routes.ts"
   },
   "peerDependencies": {
-    "@mysten/sui": "^1.3.0",
+    "@mysten/sui": "^1.28.2",
     "axios": "^1.4.0",
     "bn.js": "^5.2.1",
     "decimal.js": "^10.4.3"
