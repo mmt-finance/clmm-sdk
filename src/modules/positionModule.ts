@@ -369,6 +369,9 @@ export class PositionModule implements BaseModule {
         const pos_id = positionData.id.id;
         const pool_id = positionData.pool_id;
         const pool = pools.find((pool) => pool.poolId === pool_id);
+        if (!pool) {
+          continue;
+        }
         const poolModel: PoolParams = {
           objectId: pool_id,
           tokenXType: pool.tokenXType,
