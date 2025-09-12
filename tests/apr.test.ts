@@ -179,6 +179,15 @@ describe('PoolModule.collectAllPoolsRewards', () => {
     expect(aprData.feeAPR).toEqual(new Decimal('0.26925890311683130057'));
   }, 30000);
 
+  it('pool list apr', async () => {
+    const pools = await sdk.Pool.getAllPools();
+    for (let i = 0; i < pools.length; i++) {
+      const aprData = await sdk.Pool.getPoolAPY(pools[i]);
+      expect(Number(aprData.feeAPR)).toBeGreaterThan(0);
+      expect(Number(aprData.rewarderApr)).toBeDefined();
+    }
+  }, 30000);
+
   const mockPool = {
     poolId: '0xb0a595cb58d35e07b711ac145b4846c8ed39772c6d6f6716d89d71c64384543b',
     tokenXType: '0x375f70cf2ae4c00bf37117d0c85a2c71545e6ee05c4a5c7d282cd66a4504b068::usdt::USDT',

@@ -1365,7 +1365,7 @@ export class PoolModule implements BaseModule {
         };
       });
       if (pool.isStable) {
-        return this.getStablePoolAPR(pool, rewardsArr);
+        return this.calculatePoolAPR(pool, rewardsArr);
       }
 
       const lower_price =
@@ -1444,6 +1444,33 @@ export class PoolModule implements BaseModule {
     }
   }
 
+  public async getPoolAPY(pool: ExtendedPool, tokensInput?: TokenSchema[]) {
+    if (pool.liquidity === '0') {
+      return {
+        feeAPR: '0',
+        rewarderApr: [],
+      };
+    }
+    const rewarders = pool?.rewarders;
+    const tokens = tokensInput || (await this.getAllTokens());
+    const tokenA = tokens.find((token) => token.coinType === pool?.tokenXType);
+    const tokenB = tokens.find((token) => token.coinType === pool?.tokenYType);
+
+    const rewardsArr = rewarders?.map((rewarder) => {
+      const coinType = rewarder.coin_type;
+      const token = tokens.find((token) => token.coinType === coinType);
+      return {
+        rewardsAmount: Number(rewarder.reward_amount),
+        rewardsPrice: token?.price,
+        rewardsDecimal: token?.decimals,
+        coinType: coinType,
+        hasEnded: rewarder.hasEnded,
+        flowRate: rewarder.flow_rate,
+      };
+    });
+    return this.calculatePoolAPR(pool, rewardsArr);
+  }
+
   public async preSwap(tx: Transaction, pools: PreSwapParam[], sourceAmount: any) {
     const targetPackage = applyMvrPackage(tx, this.sdk, true);
 
@@ -1495,7 +1522,7 @@ export class PoolModule implements BaseModule {
     return BigInt(amountOutParsed);
   }
 
-  private getStablePoolAPR(
+  private calculatePoolAPR(
     pool: ExtendedPool,
     rewardsArr: {
       rewardsAmount: number;
