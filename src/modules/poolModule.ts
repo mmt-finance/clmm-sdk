@@ -1405,7 +1405,7 @@ export class PoolModule implements BaseModule {
         pool_upper_tick_index,
         new BN((10 ** tokenA.decimals).toString()),
         true,
-        false,
+        true,
         0.01,
         new BN(pool?.currentSqrtPrice),
       );
@@ -1453,8 +1453,6 @@ export class PoolModule implements BaseModule {
     }
     const rewarders = pool?.rewarders;
     const tokens = tokensInput || (await this.getAllTokens());
-    const tokenA = tokens.find((token) => token.coinType === pool?.tokenXType);
-    const tokenB = tokens.find((token) => token.coinType === pool?.tokenYType);
 
     const rewardsArr = rewarders?.map((rewarder) => {
       const coinType = rewarder.coin_type;
