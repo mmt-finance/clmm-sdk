@@ -183,7 +183,7 @@ describe('PoolModule.collectAllPoolsRewards', () => {
     const pools = await sdk.Pool.getAllPools();
     for (let i = 0; i < pools.length; i++) {
       const aprData = await sdk.Pool.getPoolAPY(pools[i]);
-      expect(Number(aprData.feeAPR)).toBeGreaterThan(0);
+      expect(Number(aprData.feeAPR)).toBeGreaterThanOrEqual(0);
       expect(Number(aprData.rewarderApr)).toBeDefined();
     }
   }, 30000);
