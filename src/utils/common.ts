@@ -19,7 +19,7 @@ export function transformPositionRpcObject(initialObject: any): PositionRpc {
     fee_growth_inside_y_last: BigInt(initialObject.fee_growth_inside_y_last),
     owed_coin_x: Number(initialObject.owed_coin_x),
     owed_coin_y: Number(initialObject.owed_coin_y),
-    reward_infos: initialObject.reward_infos.map((rewardInfo: any) => ({
+    reward_infos: (initialObject.reward_infos ?? []).map((rewardInfo: any) => ({
       reward_type: rewardInfo.reward_type,
       reward_amount: BigInt(rewardInfo.reward_amount),
     })),
