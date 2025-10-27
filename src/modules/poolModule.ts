@@ -592,7 +592,16 @@ export class PoolModule implements BaseModule {
 
     const [swapCoin] = txb.splitCoins(inputCoin, [swapAmount]);
 
-    const outputCoin = this.swap(txb, pool, swapAmount, swapCoin, isXtoY, null, limitSqrtPrice);
+    const outputCoin = this.swap(
+      txb,
+      pool,
+      swapAmount,
+      swapCoin,
+      isXtoY,
+      null,
+      limitSqrtPrice,
+      useMvr,
+    );
 
     const outputCoinAmount = txb.moveCall({
       target: '0x2::coin::value',
