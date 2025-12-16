@@ -99,6 +99,9 @@ export interface TokenSchema {
   isMmtWhitelisted: boolean;
   tokenType: string | null;
   price: string;
+  volume24h: string;
+  change24h: string;
+  changePercent24h: string;
 }
 
 export interface PaginatedTickLiquidity {
