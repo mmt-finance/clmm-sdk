@@ -17,6 +17,8 @@ const X_SUI_COIN_TYPE =
   '0x2b6602099970374cf58a2a1b9d96f005fccceb81e92eb059873baf420eb6c717::x_sui::X_SUI';
 const USDC_COIN_TYPE =
   '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC';
+const MMT_COIN_TYPE =
+  '0x35169bc93e1fddfcf3a82a9eae726d349689ed59e4b065369af8789fe59f8608::mmt::MMT';
 
 async function generateClaimRoutes() {
   try {
@@ -29,7 +31,7 @@ async function generateClaimRoutes() {
     }
 
     const need = response.data.filter((route: Route) =>
-      [SUI_COIN_TYPE, X_SUI_COIN_TYPE, USDC_COIN_TYPE].includes(route.targetToken),
+      [SUI_COIN_TYPE, X_SUI_COIN_TYPE, USDC_COIN_TYPE, MMT_COIN_TYPE].includes(route.targetToken),
     );
 
     console.log(`Filtered routes for target tokens: ${need.length}`);
@@ -38,6 +40,7 @@ async function generateClaimRoutes() {
       [SUI_COIN_TYPE]: {},
       [X_SUI_COIN_TYPE]: {},
       [USDC_COIN_TYPE]: {},
+      [MMT_COIN_TYPE]: {},
     };
 
     need.forEach((route: Route) => {
@@ -65,6 +68,7 @@ export const CLAIM_ROUTES = ${JSON.stringify(routes, null, 2)};`;
     console.log(`   - SUI: ${Object.keys(routes[SUI_COIN_TYPE]).length} routes`);
     console.log(`   - X_SUI: ${Object.keys(routes[X_SUI_COIN_TYPE]).length} routes`);
     console.log(`   - USDC: ${Object.keys(routes[USDC_COIN_TYPE]).length} routes`);
+    console.log(`   - MMT: ${Object.keys(routes[MMT_COIN_TYPE]).length} routes`);
   } catch (error) {
     console.error('❌ Error generating claim routes:', error);
     process.exit(1);
