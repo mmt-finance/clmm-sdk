@@ -74,7 +74,7 @@ export class MmtSDK {
     customHeaders?: HeadersInit;
     mvrEndpoint?: string;
   }) {
-    if (sdkParams.network === 'custom' && !sdkParams?.contractConst) {
+    if (sdkParams?.network === 'custom' && !sdkParams?.contractConst) {
       throw new Error('missing contractConst for custom network');
     }
     const network = sdkParams?.network || 'mainnet';

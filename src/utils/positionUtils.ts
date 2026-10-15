@@ -12,4 +12,5 @@ export const getPositionStatus = (
   } else if (currentSqrtPrice > upperSqrtPrice) {
     return PositionStatus['Below Range'];
   }
+  throw new Error('Unable to determine position status from sqrt prices');
 };
