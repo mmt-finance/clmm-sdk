@@ -62,6 +62,30 @@ export class PoolModule implements BaseModule {
     decimalsY: number,
     useMvr: boolean = true,
   ) {
+    if (!Number.isInteger(fee_rate) || fee_rate < 0) {
+      throw new Error('fee_rate must be a non-negative integer');
+    }
+    if (!coinXType?.trim() || !coinYType?.trim()) {
+      throw new Error('coin types are required');
+    }
+    if (
+      !Number.isInteger(decimalsX) ||
+      decimalsX < 0 ||
+      !Number.isInteger(decimalsY) ||
+      decimalsY < 0
+    ) {
+      throw new Error('decimals must be non-negative integers');
+    }
+    let parsedPrice: Decimal;
+    try {
+      parsedPrice = new Decimal(price);
+    } catch {
+      throw new Error('price must be a positive decimal string');
+    }
+    if (!parsedPrice.isFinite() || parsedPrice.lte(0)) {
+      throw new Error('price must be greater than 0');
+    }
+
     const targetPackage = applyMvrPackage(txb, this.sdk, useMvr);
 
     const [pool] = txb.moveCall({
@@ -74,7 +98,7 @@ export class PoolModule implements BaseModule {
       ],
     });
 
-    const sqrtPrice = TickMath.priceToSqrtPriceX64(new Decimal(price), decimalsX, decimalsY);
+    const sqrtPrice = TickMath.priceToSqrtPriceX64(parsedPrice, decimalsX, decimalsY);
     txb.moveCall({
       target: `${targetPackage}::pool::initialize`,
       typeArguments: [coinXType, coinYType],
@@ -152,6 +176,16 @@ export class PoolModule implements BaseModule {
     limitSqrtPrice?: bigint;
     useMvr?: boolean;
   }) {
+    if (typeof amount === 'bigint' && amount < 0n) {
+      throw new Error('swap amount must be greater than or equal to 0');
+    }
+    if (!pool?.objectId?.trim() || !pool.tokenXType?.trim() || !pool.tokenYType?.trim()) {
+      throw new Error('pool object id and coin types are required');
+    }
+    if (typeof limitSqrtPrice === 'bigint' && limitSqrtPrice < 0n) {
+      throw new Error('limitSqrtPrice must be greater than or equal to 0');
+    }
+
     const targetPackage = applyMvrPackage(txb, this.sdk, useMvr);
 
     const LowLimitPrice = BigInt('4295048017');
@@ -266,6 +300,12 @@ export class PoolModule implements BaseModule {
     transferToAddress?: string,
     useMvr: boolean = true,
   ) {
+    if (amountX < 0n || amountY < 0n) {
+      throw new Error('flash swap amounts must be greater than or equal to 0');
+    }
+    if (!pool?.objectId?.trim() || !pool.tokenXType?.trim() || !pool.tokenYType?.trim()) {
+      throw new Error('pool object id and coin types are required');
+    }
     const targetPackage = applyMvrPackage(txb, this.sdk, useMvr);
 
     const LowLimitPrice = 4295048016;
@@ -331,6 +371,18 @@ export class PoolModule implements BaseModule {
     transferToAddress?: string,
     useMvr: boolean = true,
   ) {
+    if (typeof liquidity === 'bigint' && liquidity < 0n) {
+      throw new Error('liquidity must be greater than or equal to 0');
+    }
+    if (min_amount_x < 0n || min_amount_y < 0n) {
+      throw new Error('minimum amounts must be greater than or equal to 0');
+    }
+    if (!pool?.objectId?.trim() || !pool.tokenXType?.trim() || !pool.tokenYType?.trim()) {
+      throw new Error('pool object id and coin types are required');
+    }
+    if (!positionId?.trim()) {
+      throw new Error('positionId is required');
+    }
     const targetPackage = applyMvrPackage(txb, this.sdk, useMvr);
 
     const [removeLpCoinA, removeLpCoinB] = txb.moveCall({
@@ -365,6 +417,15 @@ export class PoolModule implements BaseModule {
     transferToAddress?: string,
     useMvr: boolean = true,
   ) {
+    if (min_amount_x < 0n || min_amount_y < 0n) {
+      throw new Error('minimum amounts must be greater than or equal to 0');
+    }
+    if (!pool?.objectId?.trim() || !pool.tokenXType?.trim() || !pool.tokenYType?.trim()) {
+      throw new Error('pool object id and coin types are required');
+    }
+    if (typeof position === 'string' && !position.trim()) {
+      throw new Error('position is required');
+    }
     const targetPackage = applyMvrPackage(txb, this.sdk, useMvr);
 
     const [coinA, coinB] = txb.moveCall({

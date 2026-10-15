@@ -135,7 +135,7 @@ export async function fetchTickLiquidityApi(
   const method = 'GET';
   const options = {
     method,
-    mergedHeaders,
+    headers: mergedHeaders,
     body: null as null | string,
   };
   const url = `${baseUrl}/tickLiquidity/${poolId}?limit=${limit}&offset=${offset}`;

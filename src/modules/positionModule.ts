@@ -35,13 +35,26 @@ export class PositionModule implements BaseModule {
     transferToAddress?: string,
     useMvr: boolean = true,
   ) {
-    const targetPackage = applyMvrPackage(txb, this.sdk, useMvr);
+    if (!pool?.objectId?.trim() || !pool.tokenXType?.trim() || !pool.tokenYType?.trim()) {
+      throw new Error('pool object id and coin types are required');
+    }
+    if (!Number.isInteger(pool.tickSpacing) || (pool.tickSpacing ?? 0) <= 0) {
+      throw new Error('pool.tickSpacing must be a positive integer');
+    }
     if (typeof lower_tick_sqrt_price === 'string' && typeof upper_tick_sqrt_price === 'string') {
+      if (!lower_tick_sqrt_price.trim() || !upper_tick_sqrt_price.trim()) {
+        throw new Error('lower and upper sqrt prices must be non-empty');
+      }
       const lowerTick = TickMath.sqrtPriceX64ToTickIndex(new BN(lower_tick_sqrt_price));
       const upperTick = TickMath.sqrtPriceX64ToTickIndex(new BN(upper_tick_sqrt_price));
-
+      if (lowerTick >= upperTick) {
+        throw new Error(
+          `Invalid tick range: lower tick (${lowerTick}) must be less than upper tick (${upperTick})`,
+        );
+      }
       this.checkTickRangeValidity(lowerTick, upperTick, pool);
     }
+    const targetPackage = applyMvrPackage(txb, this.sdk, useMvr);
     const [lowerTick1] = txb.moveCall({
       target: `${targetPackage}::tick_math::get_tick_at_sqrt_price`,
       arguments: [
@@ -105,6 +118,9 @@ export class PositionModule implements BaseModule {
     positionId: string | TransactionArgument,
     useMvr: boolean = true,
   ) {
+    if (typeof positionId === 'string' && !positionId.trim()) {
+      throw new Error('positionId is required');
+    }
     const targetPackage = applyMvrPackage(txb, this.sdk, useMvr);
 
     txb.moveCall({
